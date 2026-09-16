@@ -1,6 +1,6 @@
-// Test runner: compile src/ here plus the repository's tests/lark/ with tsc,
-// then hand every compiled test file to `node --test` as an explicit path. Two
-// things a bare `tsc && node --test "<glob>"` script gets wrong:
+// Test runner: compile the skill's src/ plus the repository's tests/lark/ with
+// tsc, then hand every compiled test file to `node --test` as an explicit path.
+// Two things a bare `tsc && node --test "<glob>"` script gets wrong:
 //   - a glob that matches nothing is reported by `node --test` as "0 tests,
 //     pass" (exit 0), so a broken outDir / include / file suffix would turn
 //     the whole test step into a green no-op;
@@ -55,7 +55,7 @@ try {
 }
 if (files.length === 0) {
   process.stderr.write(
-    `scripts/test.mjs: no test files under ${testsDir} — tsc compiled nothing from ../../tests/lark/**/*.test.ts; check the include list in tsconfig.test.json and the test file names\n`,
+    `scripts/test.mjs: no test files under ${testsDir} — tsc compiled nothing from tests/lark/**/*.test.ts; check the include list in tsconfig.test.json and the test file names\n`,
   );
   process.exit(1);
 }

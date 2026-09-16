@@ -60,18 +60,17 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: skills/agent-lark
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-          cache-dependency-path: skills/agent-lark/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
       - name: dist/cli.mjs must match src  # 入仓的 bundle 必须是当前 src 的产物；esbuild 输出跨平台不保证字节一致，只在 ubuntu 比对
         if: runner.os == 'Linux'
-        run: git diff --exit-code -- dist/cli.mjs
+        run: git diff --exit-code -- skills/agent-lark/dist/cli.mjs
       - run: npm test

@@ -14,7 +14,7 @@ import { SOCK_PATH_LIMIT } from '../../skills/agent-lark/src/paths.js';
 import { homeOfSockBytes } from './fixtures/long-home.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const cli = resolve(here, '..', '..', '..', 'dist', 'cli.mjs');
+const cli = resolve(here, '..', '..', '..', 'skills', 'agent-lark', 'dist', 'cli.mjs');
 
 const scratch: string[] = [];
 function tmp(prefix: string): string {

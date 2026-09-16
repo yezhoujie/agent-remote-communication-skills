@@ -13,5 +13,11 @@ __pycache__/
 .DS_Store
 .venv/
 
+# Node 工具链（package.json / tsconfig / scripts 都在仓根）：
+# 依赖、tsc 的测试编译产物、卡片预览的输出
+node_modules/
+.test-out/
+card-preview.html
+
 # 编辑器本地配置
 .vscode/

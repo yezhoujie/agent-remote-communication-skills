@@ -4,6 +4,19 @@
 // has to build before trying is a skill most people never try.
 import { build } from 'esbuild';
 import { chmodSync, mkdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Every path esbuild writes into the bundle — the `// …` line above each
+// hoisted module, and the key of its `__commonJS` wrapper — is relative to its
+// working directory. Pin that directory to the repository root, where this
+// script and node_modules both live, rather than inherit the caller's cwd:
+// dependencies then read `node_modules/…` and the skill's own sources read
+// `skills/agent-lark/src/…`. Node module resolution is unaffected — esbuild
+// walks up from each source file, so the skill's sources still find the
+// repository-root node_modules.
+const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const skillDir = join(rootDir, 'skills', 'agent-lark');
 
 // Dependencies of the Feishu SDK are CommonJS and reach for `__dirname` /
 // `require`, which do not exist in an ES module. Reconstruct them at the top
@@ -23,10 +36,11 @@ const banner = [
   'const __dirname=__dn(__filename);',
 ].join('\n');
 
-mkdirSync('dist', { recursive: true });
+mkdirSync(join(skillDir, 'dist'), { recursive: true });
 
 const result = await build({
-  entryPoints: ['src/cli.ts'],
+  absWorkingDir: rootDir,
+  entryPoints: ['skills/agent-lark/src/cli.ts'],
   bundle: true,
   platform: 'node',
   target: 'node20',
@@ -37,12 +51,12 @@ const result = await build({
   // `.mjs`, not `.js`: the file must be read as an ES module even when it is
   // copied somewhere without a `"type": "module"` package.json beside it.
   // esbuild hoists the entry's own shebang, so the banner must not add one.
-  outfile: 'dist/cli.mjs',
+  outfile: 'skills/agent-lark/dist/cli.mjs',
   banner: { js: banner },
   metafile: true,
   logLevel: 'warning',
 });
 
-chmodSync('dist/cli.mjs', 0o755);
+chmodSync(join(skillDir, 'dist', 'cli.mjs'), 0o755);
 const bytes = Object.values(result.metafile.outputs)[0].bytes;
-console.log(`dist/cli.mjs  ${(bytes / 1024 / 1024).toFixed(1)} MB  (self-contained, no node_modules needed)`);
+console.log(`skills/agent-lark/dist/cli.mjs  ${(bytes / 1024 / 1024).toFixed(1)} MB  (self-contained, no node_modules needed)`);

@@ -3,11 +3,13 @@
 // part of `npm test`.
 //
 // It imports the compiled modules, so build them first (without --noEmit,
-// which is what `npm run typecheck` uses):
+// which is what `npm run typecheck` uses). Both commands run from the
+// repository root, where this script and tsconfig.json live; tsc emits into
+// skills/agent-lark/dist:
 //   npx tsc -p tsconfig.json && node scripts/preview.mjs
-// then open card-preview.html (gitignored).
+// then open card-preview.html, written to the repository root (gitignored).
 import { writeFileSync } from 'node:fs';
-import { askCard, notifyCard, receiptCard, statusCard } from '../dist/cards.js';
+import { askCard, notifyCard, receiptCard, statusCard } from '../skills/agent-lark/dist/cards.js';
 
 const payload = {
   title: 'scratch 目录用完删不删',
