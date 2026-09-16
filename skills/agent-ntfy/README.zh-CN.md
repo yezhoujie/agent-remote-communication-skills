@@ -101,7 +101,7 @@ npx skills add yezhoujie/agent-remote-communication-skills --skill agent-ntfy
 
 > **`-g` 的警告。** 如果 `~/.claude/skills/agent-ntfy` 已经是一个真实目录（你手动拷进去的副本），`skills` CLI 会把它删掉、换成符号链接。先备份。（这是读 CLI 源码得出的，没有在真实目录上试过。）
 
-任何能把 `skills/agent-ntfy/` 放到 agent 加载 skill 位置的办法都行（`git clone` 后拷目录也一样）。要钉住某个版本，安装时带 git ref：`npx skills add 'yezhoujie/agent-remote-communication-skills#v0.1.0' --skill agent-ntfy`（§12）。
+任何能把 `skills/agent-ntfy/` 放到 agent 加载 skill 位置的办法都行（`git clone` 后拷目录也一样）。要钉住某个版本，安装时带 git ref：`npx skills add 'yezhoujie/agent-remote-communication-skills#agent-ntfy/v0.1.3' --skill agent-ntfy`（§12）。
 
 CLI 就是目录里的 `scripts/agent_ntfy.py`。它自己的提示文案里管自己叫 `agent-ntfy`；配一个 alias 下面的命令会短很多：
 
@@ -366,7 +366,7 @@ options:
 版本就是 git tag `vX.Y.Z`；改了什么见 [CHANGELOG.md](../../CHANGELOG.md)。`skills` CLI 与 skills.sh 都不读版本号——装到本机的是仓库内容的一份快照，`npx skills update` 刷新它（全局安装加 `-g`，当前项目加 `-p`）。想停在某个版本，安装时把 tag 当 git ref 带上，按 `skills` CLI 的文档，之后 `update` 会停在那个 ref 上：
 
 ```bash
-npx skills add 'yezhoujie/agent-remote-communication-skills#v0.1.0' --skill agent-ntfy
+npx skills add 'yezhoujie/agent-remote-communication-skills#agent-ntfy/v0.1.3' --skill agent-ntfy
 ```
 
 **给一台已经跑着 daemon 的机器升级**——按这个顺序：

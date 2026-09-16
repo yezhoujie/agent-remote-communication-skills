@@ -11,6 +11,8 @@ pin (`npx skills add 'yezhoujie/agent-remote-communication-skills#v0.1.2' --skil
 
 ### [Unreleased][agent-lark-unreleased]
 
+### [0.1.3][agent-lark-0.1.3] - 2026-09-16
+
 #### Added
 
 - The repository now doubles as a Claude Code plugin marketplace (`.claude-plugin/marketplace.json`), so this
@@ -173,6 +175,8 @@ Feishu custom app of your own instead of a public notification service.
 
 ### [Unreleased]
 
+### [0.1.3] - 2026-09-16
+
 #### Added
 
 - The repository now doubles as a Claude Code plugin marketplace (`.claude-plugin/marketplace.json`), so this
@@ -324,11 +328,13 @@ relative to those untagged versions.
 - A missing `security` command (the keychain exists only on macOS) is reported as such, with the
   `AGENT_NTFY_STORE` alternatives, instead of as a socket error.
 
-[agent-lark-unreleased]: https://github.com/yezhoujie/agent-remote-communication-skills/compare/agent-lark/v0.1.2...HEAD
+[agent-lark-unreleased]: https://github.com/yezhoujie/agent-remote-communication-skills/compare/agent-lark/v0.1.3...HEAD
+[agent-lark-0.1.3]: https://github.com/yezhoujie/agent-remote-communication-skills/compare/agent-lark/v0.1.2...agent-lark/v0.1.3
 [agent-lark-0.1.2]: https://github.com/yezhoujie/agent-remote-communication-skills/compare/agent-lark/v0.1.1...agent-lark/v0.1.2
 [agent-lark-0.1.1]: https://github.com/yezhoujie/agent-remote-communication-skills/compare/agent-lark/v0.1.0...agent-lark/v0.1.1
 [agent-lark-0.1.0]: https://github.com/yezhoujie/agent-remote-communication-skills/releases/tag/agent-lark/v0.1.0
-[Unreleased]: https://github.com/yezhoujie/agent-remote-communication-skills/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/yezhoujie/agent-remote-communication-skills/compare/agent-ntfy/v0.1.3...HEAD
+[0.1.3]: https://github.com/yezhoujie/agent-remote-communication-skills/compare/v0.1.2...agent-ntfy/v0.1.3
 [0.1.2]: https://github.com/yezhoujie/agent-remote-communication-skills/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/yezhoujie/agent-remote-communication-skills/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/yezhoujie/agent-remote-communication-skills/releases/tag/v0.1.0
