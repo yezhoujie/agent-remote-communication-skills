@@ -9,7 +9,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const cli = resolve(here, '..', '..', 'dist', 'cli.mjs');
+const cli = resolve(here, '..', '..', '..', 'dist', 'cli.mjs');
 const entry = join(here, 'fixtures', 'daemon-entry.js');
 const home = mkdtempSync(join(tmpdir(), 'al-cli-daemon-'));
 const env = { ...process.env, AGENT_LARK_HOME: home };

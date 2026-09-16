@@ -1,7 +1,7 @@
 // Payload validation: the single-choice rules stay, the multi-choice ones are new.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateAsk, ValidationError } from '../src/validate.js';
+import { validateAsk, ValidationError } from '../../skills/agent-lark/src/validate.js';
 
 const base = {
   title: 'Keep or delete the scratch directory',

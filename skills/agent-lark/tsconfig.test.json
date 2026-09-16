@@ -1,8 +1,11 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": ".",
-    "outDir": ".test-out"
+    "rootDir": "../..",
+    "outDir": ".test-out",
+    "paths": {
+      "@larksuite/channel": ["./node_modules/@larksuite/channel/dist/index.d.mts"]
+    }
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts"]
+  "include": ["src/**/*.ts", "../../tests/lark/**/*.ts"]
 }

@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { closePane, quoteForPaneShell, runInPane, splitPane, type HerdrRun, type HerdrRunner } from '../src/herdr.js';
+import { closePane, quoteForPaneShell, runInPane, splitPane, type HerdrRun, type HerdrRunner } from '../../skills/agent-lark/src/herdr.js';
 
 function recorder(answer: (args: string[]) => HerdrRun): { run: HerdrRunner; calls: string[][] } {
   const calls: string[][] = [];

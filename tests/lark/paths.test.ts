@@ -6,7 +6,7 @@ import { createConnection, createServer } from 'node:net';
 import { platform, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-import { SOCK_PATH_LIMIT, projectLabel, projectStatePath, readProjectState, sockPath, sockPathProblem, writeProjectState } from '../src/paths.js';
+import { SOCK_PATH_LIMIT, projectLabel, projectStatePath, readProjectState, sockPath, sockPathProblem, writeProjectState } from '../../skills/agent-lark/src/paths.js';
 import { homeOfSockBytes as longHome, withHome } from './fixtures/long-home.js';
 
 const scratch: string[] = [];

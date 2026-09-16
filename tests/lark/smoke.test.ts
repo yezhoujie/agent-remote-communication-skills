@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateAsk } from '../src/validate.js';
+import { validateAsk } from '../../skills/agent-lark/src/validate.js';
 
 test('validateAsk accepts a minimal valid payload', () => {
   const payload = validateAsk({

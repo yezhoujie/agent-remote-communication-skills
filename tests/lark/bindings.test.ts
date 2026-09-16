@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { BindingStore, BindingsFileError, groupName, taskNameProblem, type Binding } from '../src/bindings.js';
+import { BindingStore, BindingsFileError, groupName, taskNameProblem, type Binding } from '../../skills/agent-lark/src/bindings.js';
 
 const homes: string[] = [];
 function freshHome(): string {

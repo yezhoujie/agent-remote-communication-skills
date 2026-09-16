@@ -8,7 +8,7 @@ import { join } from 'node:path';
 // The keychain service name is read once at import time: point it at a
 // service that never holds anything before the module loads.
 process.env.AGENT_LARK_KEYCHAIN = 'agent-lark-test-never-stored';
-const { credsReport, resolveCreds, writeCreds } = await import('../src/creds.js');
+const { credsReport, resolveCreds, writeCreds } = await import('../../skills/agent-lark/src/creds.js');
 
 const scratch: string[] = [];
 after(() => {

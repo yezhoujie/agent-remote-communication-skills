@@ -6,15 +6,15 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs
 import { platform, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { HerdrRun, PromptOutcome } from '../src/herdr.js';
-import type { SetupIO } from '../src/tty.js';
-import { InputInterrupted } from '../src/tty.js';
+import type { HerdrRun, PromptOutcome } from '../../skills/agent-lark/src/herdr.js';
+import type { SetupIO } from '../../skills/agent-lark/src/tty.js';
+import { InputInterrupted } from '../../skills/agent-lark/src/tty.js';
 
 // The keychain service name is read once at import time: point it at a
 // service that never holds anything before the module loads.
 process.env.AGENT_LARK_KEYCHAIN = 'agent-lark-test-never-stored';
-const { runSetup } = await import('../src/cli.js');
-const { msg } = await import('../src/texts.js');
+const { runSetup } = await import('../../skills/agent-lark/src/cli.js');
+const { msg } = await import('../../skills/agent-lark/src/texts.js');
 type SetupDeps = Parameters<typeof runSetup>[1];
 
 const scratch: string[] = [];

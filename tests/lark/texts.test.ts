@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { both, en, fill, msg, zh } from '../src/texts.js';
+import { both, en, fill, msg, zh } from '../../skills/agent-lark/src/texts.js';
 
 const placeholders = (s: string): string[] => [...new Set(s.match(/\{[a-zA-Z_]+\}/g) ?? [])].sort();
 

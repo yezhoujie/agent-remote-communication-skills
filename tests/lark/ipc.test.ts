@@ -11,9 +11,9 @@ const home = mkdtempSync(join(tmpdir(), 'al-ipc-'));
 process.env.AGENT_LARK_HOME = home;
 after(() => rmSync(home, { recursive: true, force: true }));
 
-const { ipcEndpoint, SOCK_PATH_LIMIT, sockPathProblem } = await import('../src/paths.js');
-const { isDaemonListening, request, serve } = await import('../src/ipc.js');
-const { msg } = await import('../src/texts.js');
+const { ipcEndpoint, SOCK_PATH_LIMIT, sockPathProblem } = await import('../../skills/agent-lark/src/paths.js');
+const { isDaemonListening, request, serve } = await import('../../skills/agent-lark/src/ipc.js');
+const { msg } = await import('../../skills/agent-lark/src/texts.js');
 const { homeOfSockBytes, withHome } = await import('./fixtures/long-home.js');
 
 type Handle = Parameters<typeof serve>[0]['handle'];

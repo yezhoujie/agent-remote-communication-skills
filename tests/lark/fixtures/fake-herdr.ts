@@ -1,6 +1,6 @@
 // herdr as the daemon sees it, without spawning anything.
-import type { HerdrDeps } from '../../src/daemon.js';
-import { findPaneForProject, type AgentInfo, type PromptOutcome } from '../../src/herdr.js';
+import type { HerdrDeps } from '../../../skills/agent-lark/src/daemon.js';
+import { findPaneForProject, type AgentInfo, type PromptOutcome } from '../../../skills/agent-lark/src/herdr.js';
 
 export interface FakeHerdr {
   deps: HerdrDeps;

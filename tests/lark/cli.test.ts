@@ -8,13 +8,13 @@ import { platform, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { argv, isTransientNetworkError, waitConnected } from '../src/cli.js';
-import { serve, type Response } from '../src/ipc.js';
-import { SOCK_PATH_LIMIT } from '../src/paths.js';
+import { argv, isTransientNetworkError, waitConnected } from '../../skills/agent-lark/src/cli.js';
+import { serve, type Response } from '../../skills/agent-lark/src/ipc.js';
+import { SOCK_PATH_LIMIT } from '../../skills/agent-lark/src/paths.js';
 import { homeOfSockBytes } from './fixtures/long-home.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const cli = resolve(here, '..', '..', 'dist', 'cli.mjs');
+const cli = resolve(here, '..', '..', '..', 'dist', 'cli.mjs');
 
 const scratch: string[] = [];
 function tmp(prefix: string): string {

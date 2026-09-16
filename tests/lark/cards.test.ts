@@ -3,8 +3,8 @@
 // multi-choice one, and the language each card shell is rendered in.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { askCard, notifyCard, receiptCard, statusCard } from '../src/cards.js';
-import type { AskPayload } from '../src/validate.js';
+import { askCard, notifyCard, receiptCard, statusCard } from '../../skills/agent-lark/src/cards.js';
+import type { AskPayload } from '../../skills/agent-lark/src/validate.js';
 
 interface Card {
   schema: string;

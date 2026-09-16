@@ -1,7 +1,7 @@
 // An in-memory stand-in for the Feishu channel: records what the daemon sends,
 // exposes the event handlers it registered so a test can play the phone.
 import type { CardActionEvent, CardActionResponse, EventMap, NormalizedMessage } from '@larksuite/channel';
-import type { ChannelLike } from '../../src/daemon.js';
+import type { ChannelLike } from '../../../skills/agent-lark/src/daemon.js';
 
 export type SentItem = { chatId: string; input: unknown } | { update: string; card: object };
 

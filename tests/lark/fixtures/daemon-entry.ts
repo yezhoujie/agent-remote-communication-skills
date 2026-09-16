@@ -6,7 +6,7 @@
 // first n (the retry interval is 50 ms). Unset, the first attempt succeeds.
 // AGENT_LARK_FAKE_CHAT_DELETE=ok makes `im.v1.chat.delete` succeed; unset,
 // the raw client has no such call and `unbind --dissolve` takes the failure path.
-import { runDaemon } from '../../src/daemon.js';
+import { runDaemon } from '../../../skills/agent-lark/src/daemon.js';
 import { createFakeChannel, type FakeChannelOptions } from './fake-channel.js';
 import { createFakeHerdr } from './fake-herdr.js';
 
