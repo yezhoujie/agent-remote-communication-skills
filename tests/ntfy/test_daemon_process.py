@@ -17,7 +17,7 @@ from pathlib import Path
 import ipc
 import state
 
-SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "agent_ntfy.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "skills" / "agent-ntfy" / "scripts" / "agent_ntfy.py"
 START_TIMEOUT = 15.0  # 子进程解释器起动 + 建池 + bind
 STOP_TIMEOUT = 10.0
 

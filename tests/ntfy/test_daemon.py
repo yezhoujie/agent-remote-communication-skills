@@ -23,9 +23,9 @@ from ntfyclient import NtfyClient, NtfyClosed, NtfyError
 from state import State
 import inject
 import texts
-from tests.test_inject import FakeHerdr, herdr_error
-from tests.test_render import NOTIFY, SAMPLE
-from tests.test_state import MemoryStore
+from tests.ntfy.test_inject import FakeHerdr, herdr_error
+from tests.ntfy.test_render import NOTIFY, SAMPLE
+from tests.ntfy.test_state import MemoryStore
 
 CLOSE = object()
 

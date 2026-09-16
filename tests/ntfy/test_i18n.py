@@ -15,13 +15,13 @@ import render
 import texts
 import validate
 from inject import HerdrResult, Outcome
-import tests.test_agent_ntfy as ta
-from tests.test_agent_ntfy import HERDR, run
-from tests.test_daemon import Harness, wait_until
-from tests.test_inject import FakeHerdr, herdr_error
-from tests.test_render import NOTIFY, SAMPLE
+import tests.ntfy.test_agent_ntfy as ta
+from tests.ntfy.test_agent_ntfy import HERDR, run
+from tests.ntfy.test_daemon import Harness, wait_until
+from tests.ntfy.test_inject import FakeHerdr, herdr_error
+from tests.ntfy.test_render import NOTIFY, SAMPLE
 
-from tests.test_texts import HAN
+from tests.ntfy.test_texts import HAN
 
 URL = "https://ntfy.example/t"
 
@@ -66,7 +66,7 @@ class ZhRegressionTest(unittest.TestCase):
         self.assertTrue(answered.message.startswith("**【你的回复】** 留固定目录\n\n---\n\n（以下为当时的提问）\n\n**【正在做】** "))
 
     def test_zh_column_matches_the_golden_snapshot(self):
-        # 改任何一个中文字都必须显式改 tests/zh_golden.json（`python3 tests/zh_golden.py --write`），不能顺手润色
+        # 改任何一个中文字都必须显式改 tests/ntfy/zh_golden.json（`python3 tests/ntfy/zh_golden.py --write`），不能顺手润色
         from pathlib import Path
         golden = json.loads((Path(__file__).parent / "zh_golden.json").read_text(encoding="utf-8"))
         self.assertEqual(set(golden), set(texts.TEXTS["zh"]), "key 集合变了：新增 / 删除 key 也要更新快照")

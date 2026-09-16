@@ -552,7 +552,7 @@ class DefaultStoreTest(unittest.TestCase):
 
     # 测试进程的缺省：tests 包导入时把 AGENT_NTFY_STORE 钉成 file，没显式注入 store 的用例不会碰真钥匙串 / DPAPI
     def test_test_process_defaults_to_file_store(self):
-        self.assertEqual(os.environ.get("AGENT_NTFY_STORE"), "file", "tests/__init__.py 把缺省钉成 file；shell 里导出了别的值先 unset")
+        self.assertEqual(os.environ.get("AGENT_NTFY_STORE"), "file", "tests/ntfy/__init__.py 把缺省钉成 file；shell 里导出了别的值先 unset")
         self.assertIsInstance(state.default_store(self.home), state.FileStore)
 
     def test_platform_defaults(self):

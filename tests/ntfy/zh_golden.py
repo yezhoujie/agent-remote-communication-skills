@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""中文固定文案的快照：把 texts.TEXTS["zh"] 全列 dump 成 tests/zh_golden.json。
+"""中文固定文案的快照：把 texts.TEXTS["zh"] 全列 dump 成 tests/ntfy/zh_golden.json。
 
-用例逐 key 比对快照——改任何一个中文字都会红，改字必须显式重写快照（`python3 tests/zh_golden.py --write`），
+用例逐 key 比对快照——改任何一个中文字都会红，改字必须显式重写快照（`python3 tests/ntfy/zh_golden.py --write`），
 不能顺手润色。只写快照，不检查。
 """
 
@@ -10,7 +10,7 @@ import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "skills", "agent-ntfy", "scripts"))
 import texts  # noqa: E402
 
 GOLDEN = Path(__file__).with_name("zh_golden.json")

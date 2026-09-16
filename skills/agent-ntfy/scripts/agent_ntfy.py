@@ -2,7 +2,8 @@
 """agent-ntfy：让任意 AI CLI 经 ntfy.sh 把「需要人拍板的事」推到手机，并把人的裁决带回来。
 
 子命令:
-    ask [--timeout 秒]      阻塞提问：从 stdin 读一段 JSON，推到手机，等到回复后把回复原文打到 stdout
+    ask [--timeout 秒]（默认 43200，即 12 小时）
+                            阻塞提问：从 stdin 读一段 JSON，推到手机，等到回复后把回复原文打到 stdout
     notify                  单向通知：从 stdin 读 {"title", "body"}，推一张无按钮的卡片到手机，发出即返回（不等回复、不占「提问中」）
     daemon [--detach|--status|--stop]
                             常驻订阅进程（唯一的 ntfy 订阅者）：前台跑 / 脱离会话跑 / 看状态 / 停掉

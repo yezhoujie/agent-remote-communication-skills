@@ -18,12 +18,12 @@ import inject
 import ipc
 import platform_
 import projstate
-import tests.test_inject as ti
+import tests.ntfy.test_inject as ti
 import texts
 from inject import HerdrResult
-from tests.test_daemon import Harness, wait_until
-from tests.test_inject import FakeHerdr, herdr_error
-from tests.test_render import NOTIFY, SAMPLE
+from tests.ntfy.test_daemon import Harness, wait_until
+from tests.ntfy.test_inject import FakeHerdr, herdr_error
+from tests.ntfy.test_render import NOTIFY, SAMPLE
 
 
 def Z(key, **fmt):

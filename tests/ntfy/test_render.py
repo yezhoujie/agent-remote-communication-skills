@@ -346,6 +346,78 @@ class RenderNotifyTest(unittest.TestCase):
         self.assertEqual(render.notify_message(NOTIFY, "en"), render.render_notify(NOTIFY, tag="x", lang="en").message)
 
 
+# 一段以 Co-Authored-By 结尾的 commit message：用户字段里出现这种多行原文时，最后一行下面很容易紧跟一条 ---
+COMMIT_BODY = (
+    "起草了一笔 commit，message 如下：\n\n"
+    "feat(agent-ntfy): 修 usage 注释里的 ask 超时缺省值\n\n"
+    "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+)
+COMMIT_TAIL = "<noreply@anthropic.com>"
+
+
+class SetextUnderlineTest(unittest.TestCase):
+    """用户字段里那行只含 --- / === 的文本会被 Markdown 当成 setext 标题的下划线：上一行渲染成大标题，而这条线自己
+    就不再是分隔线（ntfy 的 Android app 实测：那一行变成大标题、其后的水平线消失）。渲染前在它上面补一个空行，
+    让它回到分隔线的语义。补空行只发生在渲染，交给 agent 的原文不经这里。"""
+
+    # 那条线紧贴上一行（中间没有空行）：补一个空行，渲染结果里不再存在「非空白字符 + 换行 + ---」这种形状
+    def test_rule_glued_to_the_previous_line_gets_a_blank_line(self):
+        r = render.render_notify({"title": "t", "body": COMMIT_BODY + "\n---"}, tag="wD", lang="zh")
+        self.assertIn(COMMIT_TAIL + "\n\n---\n\n---\n\n", r.message)
+        self.assertIsNone(re.search(r"\S\n---", r.message))
+        q = render.render_question({**SAMPLE, "description": COMMIT_BODY + "\n---"}, tag="wD", reply_url=REPLY_URL, lang="zh")
+        self.assertIn(COMMIT_TAIL + "\n\n---\n\n**【卡点】**", q.message)
+        self.assertIsNone(re.search(r"\S\n---", q.message))
+
+    # === 是 setext 一级标题（渲染出来更大），同办
+    def test_equals_underline_is_defused_too(self):
+        r = render.render_notify({"title": "t", "body": "标题行\n==="}, tag="wD", lang="zh")
+        self.assertIn("标题行\n\n===\n\n---\n\n", r.message)
+        self.assertIsNone(re.search(r"\S\n===", r.message))
+
+    # 缩进 0~3 空格的 --- 在 CommonMark 里仍是下划线，要补；缩进 4 空格起是代码块，不是下划线，原样不动
+    def test_indent_of_up_to_three_spaces_is_defused_four_is_left_alone(self):
+        for indent in ("", " ", "  ", "   "):
+            with self.subTest(indent=len(indent)):
+                r = render.render_notify({"title": "t", "body": "上一行\n" + indent + "---"}, tag="wD", lang="zh")
+                self.assertIn("上一行\n\n" + indent + "---", r.message)
+        four = render.render_notify({"title": "t", "body": "上一行\n    ---"}, tag="wD", lang="zh")
+        self.assertIn("上一行\n    ---", four.message)
+        self.assertNotIn("上一行\n\n    ---", four.message)
+
+    # 上一行本来就是空行：不重复插（否则每渲染一次空行就多一行）
+    def test_existing_blank_line_is_not_doubled(self):
+        r = render.render_notify({"title": "t", "body": COMMIT_BODY + "\n\n---"}, tag="wD", lang="zh")
+        self.assertIn(COMMIT_TAIL + "\n\n---\n\n---\n\n", r.message)
+        self.assertNotIn(COMMIT_TAIL + "\n\n\n---", r.message)
+        # 上一行只有空白也算空行
+        spaced = render.render_notify({"title": "t", "body": "上一行\n   \n---"}, tag="wD", lang="zh")
+        self.assertIn("上一行\n   \n---", spaced.message)
+
+    # 单行值原样：整段只有一行 --- 时没有「上一行」可补，正文不凭空多一个空行；id / recommend 的相等比较照旧
+    def test_single_line_values_are_untouched(self):
+        self.assertEqual(render.render_notify({"title": "t", "body": "---"}, tag="wD", lang="zh").body, "---")
+        self.assertEqual(render.render_notify({"title": "t", "body": "---\n下一行"}, tag="wD", lang="zh").body, "---\n下一行")
+        p = {**with_options(2),
+             "options": [{"id": "---", "label": "甲", "consequence": "x"}, {"id": "b", "label": "乙", "consequence": "y"}],
+             "recommend": "---"}
+        self.assertEqual(render.recommended_label(p), "甲")
+        self.assertEqual(render.render_question(p, tag="wD", reply_url=REPLY_URL, lang="zh").actions[0]["body"], "甲")
+
+    # 那条线后面还有正文时同样补：下划线吃掉的是它上面那一行，与下面是什么无关
+    def test_underline_followed_by_more_text_is_defused(self):
+        r = render.render_notify({"title": "t", "body": "上一行\n---\n下一行"}, tag="wD", lang="zh")
+        self.assertIn("上一行\n\n---\n下一行", r.message)
+
+    # 校验量的是补过空行的那一份：多出来的换行算进字节预算，不能量短的发长的
+    def test_byte_budget_counts_the_inserted_blank_line(self):
+        p = {**NOTIFY, "body": "上一行\n---"}
+        self.assertEqual(render.notify_bytes(p, "zh"), len(render.render_notify(p, tag="wD", lang="zh").message.encode("utf-8")))
+        self.assertEqual(render.notify_bytes(p, "zh"), len(("上一行\n\n---" + SEP + NOTIFY_HINT["zh"]).encode("utf-8")))
+        q = {**SAMPLE, "description": COMMIT_BODY + "\n---"}
+        self.assertEqual(render.message_bytes(q, "zh"), len(render.render_question(q, tag="wD", reply_url=REPLY_URL, lang="zh").message.encode("utf-8")))
+
+
 EN_SAMPLE = {
     "title": "Keep or drop the temp dir",
     "doing": "Let the assistant work before the code is checked out",

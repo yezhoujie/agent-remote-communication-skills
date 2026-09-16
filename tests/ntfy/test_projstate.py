@@ -13,10 +13,10 @@ from pathlib import Path
 from unittest import mock
 
 import projstate
-import tests.test_agent_ntfy as ta
-from tests.test_daemon import Harness, wait_until
-from tests.test_inject import FakeHerdr
-from tests.test_render import SAMPLE
+import tests.ntfy.test_agent_ntfy as ta
+from tests.ntfy.test_daemon import Harness, wait_until
+from tests.ntfy.test_inject import FakeHerdr
+from tests.ntfy.test_render import SAMPLE
 
 CJK = re.compile(r"[一-鿿]")
 

@@ -5,7 +5,7 @@ import unittest
 
 import render
 import validate
-from tests.test_render import NOTIFY, SAMPLE
+from tests.ntfy.test_render import NOTIFY, SAMPLE
 
 REQUIRED = ["title", "doing", "description", "blocker", "options", "recommend", "reasoning", "question"]
 

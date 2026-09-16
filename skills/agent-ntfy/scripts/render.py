@@ -59,10 +59,32 @@ class Rendered:
     lang: str  # 这张卡片的固定文案语言；之后同 seq 的更新沿用它
 
 
+# 会被 Markdown 读成 setext 标题下划线的那种行：只含 --- 或 ===，可带 0~3 个前导空格（4 个起是代码块，不是下划线）
+# 与尾随空白。CommonMark 的下划线不要求与上一行等长，一个字符也算
+SETEXT_UNDERLINE = re.compile(r"^ {0,3}(?:-+|=+)[ \t]*$")
+
+
+def _defuse_setext(text: str) -> str:
+    """在会被读成 setext 下划线的行上面补一个空行，让它回到分隔线的语义。
+
+    一行只含 --- / === 且紧贴上一行时，Markdown 把**上一行**渲染成大标题，而这条线自己就不再是分隔线
+    （ntfy 的 Android app 实测：用户给的 commit message 末尾那行成了大标题、其后的水平线消失）。
+    上一行本就是空行（含只有空白的行）时不补——那已经是分隔线，重复补只会把空行越堆越多。
+    单行值没有上一行，天然不受影响：id / recommend 这类要逐字比较的字段照旧。
+    """
+    out: list[str] = []
+    for line in text.split("\n"):
+        if out and out[-1].strip() and SETEXT_UNDERLINE.match(line):
+            out.append("")
+        out.append(line)
+    return "\n".join(out)
+
+
 def _text(payload: dict, key: str) -> str:
-    """缺字段 / 非字符串一律当空串：渲染不做校验，校验层要能对不完整的输入量字节数、一次报全。"""
+    """缺字段 / 非字符串一律当空串：渲染不做校验，校验层要能对不完整的输入量字节数、一次报全。
+    取到的字符串一律过 _defuse_setext：用户字段里的 --- / === 行不能把上一行变成大标题。"""
     v = payload.get(key)
-    return v if isinstance(v, str) else ""
+    return _defuse_setext(v) if isinstance(v, str) else ""
 
 
 def _options(payload: dict) -> list[dict]:

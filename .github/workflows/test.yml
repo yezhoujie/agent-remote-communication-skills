@@ -28,7 +28,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: unittest (offline)
-        run: cd skills/agent-ntfy && AGENT_NTFY_OFFLINE=1 python -m unittest -v
+        run: AGENT_NTFY_OFFLINE=1 python -m unittest discover -s tests/ntfy -t . -v
 
   pyright:
     runs-on: ubuntu-latest
@@ -44,7 +44,7 @@ jobs:
           python-version: "3.13"
       - run: pip install pyright==1.1.413  # 与开发机 / pyrightconfig 约定一致；升级时同步改
       - name: pyright (host platform)
-        run: pyright scripts/*.py tests/*.py
+        run: pyright scripts/*.py ../../tests/ntfy/*.py
       - name: pyright (Windows platform)  # macOS / Linux 上 win32 分支被当不可达，得再按 Windows 分析一遍
         run: pyright --pythonplatform Windows scripts/*.py
 
