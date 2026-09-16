@@ -60,8 +60,9 @@ class Rendered:
 
 
 # 会被 Markdown 读成 setext 标题下划线的那种行：只含 --- 或 ===，可带 0~3 个前导空格（4 个起是代码块，不是下划线）
-# 与尾随空白。CommonMark 的下划线不要求与上一行等长，一个字符也算
-SETEXT_UNDERLINE = re.compile(r"^ {0,3}(?:-+|=+)[ \t]*$")
+# 与尾随空白。CommonMark 的下划线不要求与上一行等长，一个字符也算。尾随的 \r 也要认：正文是 CRLF 时按 \n 切行，
+# 每行末尾都留一个 \r，不认它就只防得住「那条线正好是末行」这一种
+SETEXT_UNDERLINE = re.compile(r"^ {0,3}(?:-+|=+)[ \t]*\r?$")
 
 
 def _defuse_setext(text: str) -> str:

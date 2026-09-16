@@ -417,6 +417,22 @@ class SetextUnderlineTest(unittest.TestCase):
         q = {**SAMPLE, "description": COMMIT_BODY + "\n---"}
         self.assertEqual(render.message_bytes(q, "zh"), len(render.render_question(q, tag="wD", reply_url=REPLY_URL, lang="zh").message.encode("utf-8")))
 
+    # 正文是 CRLF 时同办：按 \n 切行后那条线会带一个尾随 \r，正则不认它就漏防。
+    # 末行不带 \r 的那一形本来就防得住，这里一并钉住当回归护栏
+    def test_crlf_underline_is_defused_too(self):
+        for mark in ("---", "==="):
+            with self.subTest(mark=mark):
+                self.assertEqual(render._defuse_setext(f"a\r\n{mark}\r\nb"), f"a\r\n\n{mark}\r\nb")  # 中间行
+                self.assertEqual(render._defuse_setext(f"a\r\n{mark}\r"), f"a\r\n\n{mark}\r")  # 末行带尾随 \r
+                self.assertEqual(render._defuse_setext(f"a\r\n{mark}"), f"a\r\n\n{mark}")  # 末行不带 \r
+                self.assertEqual(render._defuse_setext(f"a\r\n\r\n{mark}\r\nb"), f"a\r\n\r\n{mark}\r\nb")  # 上一行本就是空行（只有 \r）：不重复插
+                self.assertEqual(render._defuse_setext(f"a\r\n    {mark}\r\nb"), f"a\r\n    {mark}\r\nb")  # 缩进 4 空格是代码块，CRLF 下同样不动
+        # 走真渲染路径一致：notify 的 body 是 CRLF，补进去的空行也算进字节预算
+        p = {**NOTIFY, "body": "上一行\r\n---\r\n下一行"}
+        r = render.render_notify(p, tag="wD", lang="zh")
+        self.assertIn("上一行\r\n\n---\r\n下一行", r.message)
+        self.assertEqual(render.notify_bytes(p, "zh"), len(r.message.encode("utf-8")))
+
 
 EN_SAMPLE = {
     "title": "Keep or drop the temp dir",

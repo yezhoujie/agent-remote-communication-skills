@@ -175,6 +175,13 @@ Feishu custom app of your own instead of a public notification service.
 
 ### [Unreleased]
 
+#### Fixed
+
+- The setext guard added in 0.1.3 missed CRLF text: splitting the field on `\n` leaves a trailing
+  `\r` on the `---` / `===` line, which the pattern did not match, so such a line in the middle of a
+  CRLF body could still turn the line above it into a heading and lose the rule. Only a line at the
+  very end of the field was caught. The pattern now allows the trailing `\r`.
+
 ### [0.1.3] - 2026-09-16
 
 #### Added
