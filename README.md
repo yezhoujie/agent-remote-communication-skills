@@ -50,6 +50,26 @@ have unit-test coverage on CI only — no end-to-end test in a real environment 
 - What the agent reads: [skills/agent-lark/SKILL.md](skills/agent-lark/SKILL.md)
 - Making it apply for the whole session (a ready-made rule for the agent, teams included): [README §14](skills/agent-lark/README.md#14-integration-keeping-the-skill-in-force-for-the-whole-session) · [`examples/remote-mode-rule.md`](skills/agent-lark/examples/remote-mode-rule.md)
 
+## Install as a Claude Code plugin
+
+Both skills are also published as a Claude Code plugin marketplace from this repository — an alternative to
+`npx skills add` if you use Claude Code:
+
+```bash
+claude plugin marketplace add yezhoujie/agent-remote-communication-skills
+claude plugin install agent-ntfy@agent-remote-communication-skills   # or agent-lark@agent-remote-communication-skills
+```
+
+Each plugin carries exactly one skill, taken straight from [`skills/`](skills/) — no test suites, nothing to
+build. Plugin skills are namespaced, so the invocation name is `/agent-ntfy:agent-ntfy` (and
+`/agent-lark:agent-lark`) instead of the bare name `npx skills add` gives you. Pick one route per project:
+installing both ways leaves two copies of the same skill in one session. Update a plugin with
+`claude plugin update agent-ntfy`; refresh the listing first with
+`/plugin marketplace update agent-remote-communication-skills`. The catalog itself is
+[`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json).
+
+也可以通过 Claude Code plugin marketplace 安装：`claude plugin marketplace add yezhoujie/agent-remote-communication-skills`，再 `claude plugin install agent-ntfy@agent-remote-communication-skills`；一个 plugin 只含一个 skill，调用名带名空间（`/agent-ntfy:agent-ntfy`），同一个项目只选一种安装方式。
+
 ## Repository
 
 - Releases: [CHANGELOG.md](CHANGELOG.md) — one section per skill; tags are `agent-ntfy/vX.Y.Z` and `agent-lark/vX.Y.Z`

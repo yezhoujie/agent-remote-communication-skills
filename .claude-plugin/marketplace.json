@@ -1,0 +1,41 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "agent-remote-communication-skills",
+  "description": "Push the decisions an AI coding CLI cannot settle on its own to your phone, and bring your verdict — or any instruction — straight back into the agent session. Two channels: ntfy.sh and Feishu/Lark.",
+  "owner": {
+    "name": "yezhoujie",
+    "url": "https://github.com/yezhoujie"
+  },
+  "plugins": [
+    {
+      "name": "agent-ntfy",
+      "source": "./skills/agent-ntfy",
+      "description": "Pushes a decision that needs a human to their phone via ntfy.sh and blocks until the verdict comes back on stdout; messages the human sends from the phone arrive in the agent session as instructions.",
+      "author": {
+        "name": "yezhoujie"
+      },
+      "category": "development",
+      "keywords": ["ntfy", "notification", "human-in-the-loop", "remote"],
+      "license": "MIT",
+      "repository": "https://github.com/yezhoujie/agent-remote-communication-skills",
+      "homepage": "https://github.com/yezhoujie/agent-remote-communication-skills/tree/main/skills/agent-ntfy",
+      "strict": false,
+      "skills": ["./"]
+    },
+    {
+      "name": "agent-lark",
+      "source": "./skills/agent-lark",
+      "description": "Pushes a decision that needs a human to their phone as a Feishu/Lark card and blocks until the verdict comes back on stdout; messages, images, files and voice notes sent in the group arrive in the agent session as instructions.",
+      "author": {
+        "name": "yezhoujie"
+      },
+      "category": "development",
+      "keywords": ["feishu", "lark", "human-in-the-loop", "remote"],
+      "license": "MIT",
+      "repository": "https://github.com/yezhoujie/agent-remote-communication-skills",
+      "homepage": "https://github.com/yezhoujie/agent-remote-communication-skills/tree/main/skills/agent-lark",
+      "strict": false,
+      "skills": ["./"]
+    }
+  ]
+}
