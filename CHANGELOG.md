@@ -11,6 +11,28 @@ pin (`npx skills add 'yezhoujie/agent-remote-communication-skills#v0.1.2' --skil
 
 ### [Unreleased][agent-lark-unreleased]
 
+#### Added
+
+- The repository now doubles as a Claude Code plugin marketplace (`.claude-plugin/marketplace.json`), so this
+  skill can also be installed with `claude plugin marketplace add yezhoujie/agent-remote-communication-skills`
+  followed by `claude plugin install agent-lark@agent-remote-communication-skills`. `npx skills add` is
+  unaffected.
+
+#### Changed
+
+- The tests moved out of the skill directory to `tests/lark/` at the repository root, so what
+  `npx skills add` installs no longer carries them — 232 KB less, with the shipped `dist/cli.mjs`,
+  `SKILL.md`, both READMEs, `references/` and `examples/` untouched.
+- The development toolchain moved to the repository root too: `package.json`, `package-lock.json`, both
+  `tsconfig*.json` and `scripts/` now live there, and `skills/agent-lark/` holds only what ships
+  (`SKILL.md`, both READMEs, `references/`, `examples/`, `dist/cli.mjs`, `src/`) — installing this skill
+  as a Claude Code plugin no longer finds a manifest and a lockfile in the plugin root and runs an
+  `npm ci` in it. Build, type-check and tests run from the repository root: `npm ci && npm test`.
+- `dist/cli.mjs` was rebuilt for that move. The only differences inside the bundle are the path
+  comments esbuild writes above each module and the matching module keys, which are relative to the
+  build's working directory and so now read `// skills/agent-lark/src/cli.ts` rather than
+  `// src/cli.ts`; dependency paths are unchanged and no logic is.
+
 ### [0.1.2][agent-lark-0.1.2] - 2026-09-15
 
 #### Added
@@ -150,6 +172,33 @@ Feishu custom app of your own instead of a public notification service.
 ## agent-ntfy
 
 ### [Unreleased]
+
+#### Added
+
+- The repository now doubles as a Claude Code plugin marketplace (`.claude-plugin/marketplace.json`), so this
+  skill can also be installed with `claude plugin marketplace add yezhoujie/agent-remote-communication-skills`
+  followed by `claude plugin install agent-ntfy@agent-remote-communication-skills`. `npx skills add` is
+  unaffected.
+
+#### Changed
+
+- The tests moved out of the skill directory to `tests/ntfy/` at the repository root, so what
+  `npx skills add` installs no longer carries them — 420 kB less out of 878 kB (48%). The move itself
+  changes nothing that ships: `SKILL.md`, both READMEs, `references/` and `examples/` are untouched,
+  and `scripts/` only by the two fixes below. The tests now run from the repository root
+  (`AGENT_NTFY_OFFLINE=1 python3 -m unittest discover -s tests/ntfy -t . -v`).
+
+#### Fixed
+
+- The CLI usage text did not say what `ask --timeout` defaults to; it now says 43200 s (12 hours),
+  which is `DEFAULT_TIMEOUT`. `confirm-sub --timeout` keeps its documented 600 s.
+- A line inside a user-supplied field that holds only `---` or `===` right under a non-blank line no
+  longer turns that line into a heading. Markdown reads such a line as a setext underline, so on the
+  ntfy Android app the last line of a pasted commit message (`Co-Authored-By: …`) came out as a large
+  heading and the rule meant to follow it was gone. Rendering now puts a blank line above it, leaving
+  it a horizontal rule: up to three leading spaces still count as an underline, four make it a code
+  block and are left alone, an existing blank line is not doubled, and single-line values (an option
+  `id`, `recommend`) are unchanged.
 
 ### [0.1.2] - 2026-09-14
 
