@@ -11,6 +11,14 @@ pin (`npx skills add 'yezhoujie/agent-remote-communication-skills#v0.1.2' --skil
 
 ### [Unreleased][agent-lark-unreleased]
 
+#### Added
+
+- README §2.1: two Feishu accounts on one Mac — install the App Store build (`com.bytedance.macos.feishu`)
+  next to the feishu.cn build (`com.electron.lark`); they are independent apps with their own data
+  directories, so one account signs in to each with no script and no background service. The one limit
+  (browser → desktop-client authorization always wakes the same one; this channel never goes through it) and
+  a link to feishu-dual for those who need that re-routed.
+
 ### [0.1.3][agent-lark-0.1.3] - 2026-09-16
 
 #### Added

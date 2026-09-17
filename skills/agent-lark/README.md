@@ -7,7 +7,7 @@ This file is for the person installing it. The agent reads [SKILL.md](SKILL.md) 
 ## Contents
 
 1. What it is
-2. Requirements
+2. Requirements (2.1 two Feishu accounts on one Mac)
 3. Install
 4. Setup, once per machine (4.1 by hand · 4.2 through your agent · 4.3 scopes · 4.4 credentials)
 5. Using it: what you say, what the agent does
@@ -36,6 +36,12 @@ One project (the directory the agent works in) gets one Feishu group; whichever 
   - The whole question round trip (card → tap or type → answer back to the agent), notifications and files work **without** herdr.
   - Messages you send on your own initiative — an instruction, a photo, a voice note, a reply to an old card — are typed into the agent's terminal by herdr; without it they cannot be delivered, and you get a receipt card in the group saying so.
   - The 🔔 *waiting for you* card (pushed when the agent is stuck on a prompt only you can answer) also needs herdr; so does the pane the agent opens for you in §4.2.
+
+### 2.1 Two Feishu accounts on one Mac
+
+With two accounts signed in, the Feishu desktop app only receives messages for the current one (the phone app receives both). To keep a work account and the personal account that runs this channel online on the same Mac at once: **install a second "Feishu" from the Mac App Store**. The App Store build (`com.bytedance.macos.feishu`) and the build downloaded from feishu.cn (`com.electron.lark`) are two independent apps with different bundle IDs and data directories, so installed side by side they are simply two Feishus — one account each, each receiving its own messages; nothing patched, no script, no background service (tested 2026-09 on macOS 26, both running at once).
+
+The limit: both register the `lark://` family of URL schemes, and macOS keeps one default handler per scheme, so "open a Feishu doc in the browser → the page asks the desktop client to authorize" always wakes the same one, whichever Feishu you started from. This channel's cards and messages never go through browser authorization, so it is unaffected. If that does bite you, see [feishu-dual](https://github.com/liusong881002-bit/feishu-dual): a small resident service that re-points the schemes to whichever Feishu was most recently in front. Note it assumes your primary Feishu is the App Store build and downloads the second one from feishu.cn itself; on a machine that already has the feishu.cn build, use only its `auth-auto-on`.
 
 ## 3. Install
 
