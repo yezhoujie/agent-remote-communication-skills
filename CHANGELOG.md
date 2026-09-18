@@ -11,6 +11,11 @@ pin (`npx skills add 'yezhoujie/agent-remote-communication-skills#v0.1.2' --skil
 
 ### [Unreleased][agent-lark-unreleased]
 
+#### Changed
+
+- Every reaction event the daemon receives is logged as `reaction.event` (message id, emoji, action, operator) before
+  the filters, so "why did my reaction do nothing" can be read off `daemon.log`.
+
 ### [0.1.4][agent-lark-0.1.4] - 2026-09-18
 
 #### Added

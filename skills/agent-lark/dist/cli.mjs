@@ -138138,6 +138138,7 @@ ${text}`;
     await inject(b, text, incoming.messageId);
   }));
   channel.on("reaction", guarded("reaction", async (evt) => {
+    log("reaction.event", { messageId: evt.messageId, emoji: evt.emojiType, action: evt.action, operator: evt.operator.openId });
     if (evt.action !== "added" || evt.emojiType === QUEUE_EMOJI) return;
     const q = queued.get(evt.messageId);
     if (!q) return;

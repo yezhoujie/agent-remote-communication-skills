@@ -1959,8 +1959,8 @@ test('a reaction the human adds on a queued message presses ctrl+enter, the queu
   await daemon.stop();
 });
 
-test('reactions that do not count: the queued emoji itself, a removal, a message that is not queued', PER_TEST, async () => {
-  const { daemon, fake, herdr } = await start();
+test('reactions that do not count: the queued emoji itself, a removal, a message that is not queued — each still logged as reaction.event', PER_TEST, async () => {
+  const { daemon, fake, herdr, home } = await start();
   await connected();
   await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
   herdr.agents = [claudeWorking()];
@@ -1972,6 +1972,11 @@ test('reactions that do not count: the queued emoji itself, a removal, a message
   await sleep(80);
   assert.equal(herdr.keys.length, 0);
   assert.deepEqual(emojisOn(fake, 'om_human_1'), [QUEUE]);
+  // Every reaction event is logged before the filters, so "why did my reaction do nothing" can be read off the log.
+  const logText = readFileSync(join(home, 'daemon.log'), 'utf8');
+  assert.equal((logText.match(/reaction\.event/g) ?? []).length, 3);
+  assert.match(logText, /reaction\.event .*"emoji":"StatusInFlight".*"action":"added"/);
+  assert.match(logText, /reaction\.event .*"action":"removed"/);
   await daemon.stop();
 });
 

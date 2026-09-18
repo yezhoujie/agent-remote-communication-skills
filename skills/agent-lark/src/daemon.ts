@@ -820,6 +820,8 @@ export async function runDaemon(deps: DaemonDeps = {}): Promise<DaemonHandle> {
   // nothing to us. Any member of the group can do it, as any member's message
   // is injected.
   channel.on('reaction', guarded('reaction', async (evt: ReactionEvent) => {
+    // Logged before any filter: "why did my reaction do nothing" is answered by this line.
+    log('reaction.event', { messageId: evt.messageId, emoji: evt.emojiType, action: evt.action, operator: evt.operator.openId });
     if (evt.action !== 'added' || evt.emojiType === QUEUE_EMOJI) return;
     const q = queued.get(evt.messageId);
     if (!q) return;
