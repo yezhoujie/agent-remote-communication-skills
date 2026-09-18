@@ -1,19 +1,21 @@
 // The daemon in-process, with the Feishu channel and herdr replaced by fakes.
 import { after, test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, lstatSync, lutimesSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, truncateSync, utimesSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, lstatSync, lutimesSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, truncateSync, utimesSync, writeFileSync } from 'node:fs';
 import { platform, tmpdir } from 'node:os';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { createFakeChannel, pageOf, type FakeChannelOptions } from './fixtures/fake-channel.js';
-import { createFakeHerdr } from './fixtures/fake-herdr.js';
+import { createFakeChannel, pageOf, type FakeChannel, type FakeChannelOptions } from './fixtures/fake-channel.js';
+import { agentEntry, createFakeHerdr, type FakeHerdr } from './fixtures/fake-herdr.js';
+import { en as enText } from '../../skills/agent-lark/src/texts.js';
 import { homeOfSockBytes } from './fixtures/long-home.js';
 
 process.env.AGENT_LARK_APP_ID = 'cli_fake';
 process.env.AGENT_LARK_APP_SECRET = 'fake-secret';
 
 const { runDaemon, DaemonStartError } = await import('../../skills/agent-lark/src/daemon.js');
+type DaemonHandle = Awaited<ReturnType<typeof runDaemon>>;
 const { request } = await import('../../skills/agent-lark/src/ipc.js');
 const { fill, msg, t } = await import('../../skills/agent-lark/src/texts.js');
 const { readProjectState, writeProjectState, SOCK_PATH_LIMIT, sockPathProblem } = await import('../../skills/agent-lark/src/paths.js');
@@ -54,7 +56,7 @@ async function ping() {
   return res.ok && res.kind === 'pong' ? res.status : null;
 }
 
-async function start(channelOpts: FakeChannelOptions = {}, retryMs = 50, opts: { owner?: string; pollMs?: number } = {}) {
+async function start(channelOpts: FakeChannelOptions = {}, retryMs = 50, opts: { owner?: string; pollMs?: number; claudeConfigDir?: string; queuedMaxAgeMs?: number } = {}) {
   const home = freshHome();
   // The owner is read from the environment when the daemon starts; each test
   // says whether one is known.
@@ -62,7 +64,14 @@ async function start(channelOpts: FakeChannelOptions = {}, retryMs = 50, opts: {
   else delete process.env.AGENT_LARK_OWNER_OPEN_ID;
   const fake = createFakeChannel(channelOpts);
   const herdr = createFakeHerdr();
-  const daemon = await runDaemon({ createChannel: () => fake.channel, herdr: herdr.deps, connectRetryMs: retryMs, pollMs: opts.pollMs });
+  const daemon = await runDaemon({
+    createChannel: () => fake.channel,
+    herdr: herdr.deps,
+    connectRetryMs: retryMs,
+    pollMs: opts.pollMs,
+    claudeConfigDir: opts.claudeConfigDir,
+    queuedMaxAgeMs: opts.queuedMaxAgeMs,
+  });
   daemons.push(daemon);
   return { fake, herdr, daemon, home };
 }
@@ -1859,4 +1868,366 @@ test('media sweep never follows a symlink: what it points at outside the state d
     assert.match(line, /"removed":1/);
     await daemon.stop();
   });
+});
+
+// ---- injection by the target's CLI: kimi is woken with ctrl+s; a busy claude's message is marked "queued" with a reaction ----
+
+const QUEUE = 'StatusInFlight';
+const claudeWorking = (paneId = 'w1:p1', session = 'sess-1') =>
+  agentEntry({ pane_id: paneId, agent: 'claude', agent_status: 'working', agent_session: { agent: 'claude', kind: 'id', source: 'herdr:claude', value: session } });
+const cardsSent = (fake: { sent: unknown[] }): Card[] =>
+  fake.sent.map((s) => (s as { input?: { card?: Card } }).input?.card).filter((c): c is Card => !!c);
+const emojisOn = (fake: { reactions: Array<{ messageId: string; emoji: string }> }, messageId: string): string[] =>
+  fake.reactions.filter((r) => r.messageId === messageId).map((r) => r.emoji);
+
+test('kimi target: the prompt is followed by ctrl+s, and the Get reaction as usual', PER_TEST, async () => {
+  const { daemon, fake, herdr } = await start();
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [agentEntry({ pane_id: 'w1:p1', agent: 'kimi', agent_status: 'working' })];
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  await waitFor(() => fake.reactions.length === 1, 'the reaction');
+  assert.equal(herdr.prompts.length, 1);
+  assert.deepEqual(herdr.keys, [{ paneId: 'w1:p1', key: 'ctrl+s' }]);
+  assert.deepEqual(emojisOn(fake, 'om_human_1'), ['Get']);
+  assert.equal(cardsSent(fake).length, 0);
+  await daemon.stop();
+});
+
+test('kimi target whose wake-up key is refused: the message keeps its Get reaction, and a "maybe not delivered" receipt names the code', PER_TEST, async () => {
+  const { daemon, fake, herdr } = await start();
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [agentEntry({ pane_id: 'w1:p1', agent: 'kimi', agent_status: 'working' })];
+  herdr.keysOutcome = { ok: false, code: 'agent_not_found', message: 'gone' };
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  const receipt = await waitFor(() => cardsSent(fake).find((c) => c.header.template === 'orange'), 'the receipt card');
+  assert.equal(receipt.header.title.content, `⚠️ [p] ${enText.maybeNotDelivered}`);
+  assert.match(JSON.stringify(receipt.body), /agent_not_found/);
+  await waitFor(() => fake.reactions.length === 1, 'the reaction: the text did reach the queue');
+  assert.deepEqual(emojisOn(fake, 'om_human_1'), ['Get']);
+  await daemon.stop();
+});
+
+test('claude target that is working: no key, the message gets the queued reaction instead of Get, and no card', PER_TEST, async () => {
+  const { daemon, fake, herdr } = await start();
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking()];
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  await waitFor(() => fake.reactions.length === 1, 'the reaction');
+  assert.equal(herdr.prompts.length, 1);
+  assert.equal(herdr.keys.length, 0);
+  assert.deepEqual(emojisOn(fake, 'om_human_1'), [QUEUE]);
+  assert.equal(cardsSent(fake).length, 0);
+  await daemon.stop();
+});
+
+test('claude target that is idle, and any other agent kind: prompt only, Get, no key', PER_TEST, async () => {
+  const { daemon, fake, herdr } = await start();
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [agentEntry({ pane_id: 'w1:p1', agent: 'claude', agent_status: 'idle' })];
+  await fake.message({ chatId: 'oc_x', content: 'one', messageId: 'om_human_1' });
+  await waitFor(() => fake.reactions.length === 1, 'the first reaction');
+  herdr.agents = [agentEntry({ pane_id: 'w1:p1', agent: 'codex', agent_status: 'working' })];
+  await fake.message({ chatId: 'oc_x', content: 'two', messageId: 'om_human_2' });
+  await waitFor(() => fake.reactions.length === 2, 'the second reaction');
+  assert.equal(herdr.prompts.length, 2);
+  assert.equal(herdr.keys.length, 0);
+  assert.deepEqual(fake.reactions.map((r) => r.emoji), ['Get', 'Get']);
+  await daemon.stop();
+});
+
+// ---- the human marks their queued message with a reaction: send now ----
+
+test('a reaction the human adds on a queued message presses ctrl+enter, the queued reaction is swapped for Get, and a second reaction is a no-op', PER_TEST, async () => {
+  const { daemon, fake, herdr } = await start();
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking()];
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  await waitFor(() => emojisOn(fake, 'om_human_1').length === 1, 'the queued reaction');
+  await fake.react({ messageId: 'om_human_1', emojiType: 'THUMBSUP' });
+  await waitFor(() => emojisOn(fake, 'om_human_1').includes('Get'), 'the Get reaction');
+  assert.deepEqual(herdr.keys, [{ paneId: 'w1:p1', key: 'ctrl+enter' }]);
+  assert.deepEqual(fake.removedReactions, [{ messageId: 'om_human_1', reactionId: 'rid_1' }]);
+  await fake.react({ messageId: 'om_human_1', emojiType: 'THUMBSUP' });
+  await sleep(50);
+  assert.equal(herdr.keys.length, 1, 'no second key press');
+  assert.equal(cardsSent(fake).length, 0);
+  await daemon.stop();
+});
+
+test('reactions that do not count: the queued emoji itself, a removal, a message that is not queued', PER_TEST, async () => {
+  const { daemon, fake, herdr } = await start();
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking()];
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  await waitFor(() => emojisOn(fake, 'om_human_1').length === 1, 'the queued reaction');
+  await fake.react({ messageId: 'om_human_1', emojiType: QUEUE });
+  await fake.react({ messageId: 'om_human_1', emojiType: 'THUMBSUP', action: 'removed' });
+  await fake.react({ messageId: 'om_somebody_else', emojiType: 'THUMBSUP' });
+  await sleep(80);
+  assert.equal(herdr.keys.length, 0);
+  assert.deepEqual(emojisOn(fake, 'om_human_1'), [QUEUE]);
+  await daemon.stop();
+});
+
+test('when herdr refuses the send-now key: the reactions stay as they are and a "maybe not delivered" receipt names the code', PER_TEST, async () => {
+  const { daemon, fake, herdr } = await start();
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking()];
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  await waitFor(() => emojisOn(fake, 'om_human_1').length === 1, 'the queued reaction');
+  herdr.keysOutcome = { ok: false, code: 'agent_not_found', message: 'gone' };
+  await fake.react({ messageId: 'om_human_1', emojiType: 'THUMBSUP' });
+  const receipt = await waitFor(() => cardsSent(fake).find((c) => c.header.template === 'orange'), 'the receipt card');
+  assert.equal(receipt.header.title.content, `⚠️ [p] ${enText.maybeNotDelivered}`);
+  assert.match(JSON.stringify(receipt.body), /agent_not_found/);
+  assert.deepEqual(emojisOn(fake, 'om_human_1'), [QUEUE]);
+  assert.equal(fake.removedReactions.length, 0);
+  await daemon.stop();
+});
+
+// ---- swapping the queued reaction for Get without the human doing anything: the transcript says when claude read the entry; herdr going idle is the fallback ----
+
+const queueOp = (op: Record<string, unknown>) => JSON.stringify({ type: 'queue-operation', timestamp: new Date().toISOString(), sessionId: 'sess-1', ...op }) + '\n';
+async function startWithTranscript(channelOpts: FakeChannelOptions = {}): Promise<{ daemon: DaemonHandle; fake: FakeChannel; herdr: FakeHerdr; home: string; transcript: string }> {
+  const configDir = mkdtempSync(join(tmpdir(), 'al-claude-'));
+  homes.push(configDir);
+  const projectDir = join(configDir, 'projects', '-Users-x-p');
+  mkdirSync(projectDir, { recursive: true });
+  const transcript = join(projectDir, 'sess-1.jsonl');
+  writeFileSync(transcript, queueOp({ operation: 'enqueue', content: 'earlier' }));
+  const started = await start(channelOpts, 50, { pollMs: 40, claudeConfigDir: configDir });
+  return { ...started, transcript };
+}
+const swapped = (fake: FakeChannel, messageId: string): boolean =>
+  fake.removedReactions.some((r) => r.messageId === messageId) && emojisOn(fake, messageId).includes('Get');
+
+test('transcript: a "remove … absorbed_mid_turn" record quoting the injected line swaps the queued reaction for Get; a later reaction is a no-op', PER_TEST, async () => {
+  const { daemon, fake, herdr, transcript } = await startWithTranscript();
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking()];
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  await waitFor(() => emojisOn(fake, 'om_human_1').length === 1, 'the queued reaction');
+  await sleep(120);
+  assert.equal(fake.removedReactions.length, 0, 'nothing changes while the transcript is silent');
+  appendFileSync(transcript, queueOp({ operation: 'remove', reason: 'absorbed_mid_turn', content: '[agent-lark remote] hello there' }));
+  await waitFor(() => swapped(fake, 'om_human_1'), 'the swap');
+  assert.deepEqual(emojisOn(fake, 'om_human_1'), [QUEUE, 'Get']);
+  await fake.react({ messageId: 'om_human_1', emojiType: 'THUMBSUP' });
+  await sleep(50);
+  assert.equal(herdr.keys.length, 0);
+  await daemon.stop();
+});
+
+test('transcript: a "dequeue" record (the whole queue sent as a turn) swaps every queued message of that session; other removes and other texts do not', PER_TEST, async () => {
+  const { daemon, fake, herdr, transcript } = await startWithTranscript();
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking()];
+  await fake.message({ chatId: 'oc_x', content: 'one', messageId: 'om_human_1' });
+  await fake.message({ chatId: 'oc_x', content: 'two', messageId: 'om_human_2' });
+  await waitFor(() => fake.reactions.length === 2, 'two queued reactions');
+  appendFileSync(transcript, queueOp({ operation: 'remove', reason: 'taken_back', content: '[agent-lark remote] one' }));
+  appendFileSync(transcript, queueOp({ operation: 'remove', reason: 'absorbed_mid_turn', content: '[agent-lark remote] something else' }));
+  await sleep(120);
+  assert.equal(fake.removedReactions.length, 0, 'neither a different reason nor a different text counts');
+  appendFileSync(transcript, queueOp({ operation: 'dequeue' }));
+  await waitFor(() => swapped(fake, 'om_human_1') && swapped(fake, 'om_human_2'), 'both swapped');
+  await daemon.stop();
+});
+
+test('transcript: a record written before the prompt does not count; a missing transcript is logged once; half a line is not a record', PER_TEST, async () => {
+  const { daemon, fake, herdr, home, transcript } = await startWithTranscript();
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  appendFileSync(transcript, queueOp({ operation: 'remove', reason: 'absorbed_mid_turn', content: '[agent-lark remote] hello there' }));
+  herdr.agents = [claudeWorking()];
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  await waitFor(() => emojisOn(fake, 'om_human_1').length === 1, 'the queued reaction');
+  await sleep(120);
+  assert.equal(fake.removedReactions.length, 0, 'the older record must not count');
+  const record = queueOp({ operation: 'remove', reason: 'absorbed_mid_turn', content: '[agent-lark remote] hello there' });
+  const half = Math.floor(record.length / 2);
+  appendFileSync(transcript, record.slice(0, half));
+  await sleep(120);
+  assert.equal(fake.removedReactions.length, 0, 'half a line is not a record');
+  appendFileSync(transcript, record.slice(half));
+  await waitFor(() => swapped(fake, 'om_human_1'), 'swapped once the line was complete');
+  herdr.agents = [claudeWorking('w1:p1', 'sess-nowhere')];
+  await fake.message({ chatId: 'oc_x', content: 'again', messageId: 'om_human_2' });
+  await waitFor(() => emojisOn(fake, 'om_human_2').length === 1, 'the second queued reaction');
+  await waitFor(() => /transcript\.missing/.test(readFileSync(join(home, 'daemon.log'), 'utf8')), 'the missing-transcript log line');
+  await sleep(150);
+  assert.equal(swapped(fake, 'om_human_2'), false);
+  assert.equal((readFileSync(join(home, 'daemon.log'), 'utf8').match(/transcript\.missing/g) ?? []).length, 1, 'logged once, not every poll');
+  await daemon.stop();
+});
+
+test('fallback: herdr reporting the pane idle swaps the queued reaction for Get even without a transcript', PER_TEST, async () => {
+  const { daemon, fake, herdr } = await start({}, 50, { pollMs: 40 });
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [agentEntry({ pane_id: 'w1:p1', agent: 'claude', agent_status: 'working' })];
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  await waitFor(() => emojisOn(fake, 'om_human_1').length === 1, 'the queued reaction');
+  await sleep(120);
+  assert.equal(fake.removedReactions.length, 0, 'still working: nothing changes');
+  herdr.agents = [agentEntry({ pane_id: 'w1:p1', agent: 'claude', agent_status: 'idle' })];
+  await waitFor(() => swapped(fake, 'om_human_1'), 'swapped on idle');
+  await daemon.stop();
+});
+
+test('a queued message with no signal for the maximum age is forgotten: reactions untouched, a later reaction presses nothing', PER_TEST, async () => {
+  const { daemon, fake, herdr, home } = await start({}, 50, { pollMs: 40, queuedMaxAgeMs: 200 });
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking()];
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  await waitFor(() => emojisOn(fake, 'om_human_1').length === 1, 'the queued reaction');
+  await waitFor(() => /queued\.expired/.test(readFileSync(join(home, 'daemon.log'), 'utf8')), 'the expiry logged', 3000);
+  assert.deepEqual(emojisOn(fake, 'om_human_1'), [QUEUE]);
+  assert.equal(fake.removedReactions.length, 0);
+  await fake.react({ messageId: 'om_human_1', emojiType: 'THUMBSUP' });
+  await sleep(50);
+  assert.equal(herdr.keys.length, 0);
+  await daemon.stop();
+});
+
+test('queued messages are capped: the oldest is forgotten (logged), and a reaction on it presses nothing while one on the next does', PER_TEST, async () => {
+  const { daemon, fake, herdr, home } = await start();
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking()];
+  for (let i = 1; i <= 21; i++) {
+    await fake.message({ chatId: 'oc_x', content: `m${i}`, messageId: `om_human_${i}` });
+    await waitFor(() => fake.reactions.length === i, `queued reaction ${i}`);
+  }
+  await fake.react({ messageId: 'om_human_1', emojiType: 'THUMBSUP' });
+  await sleep(50);
+  assert.equal(herdr.keys.length, 0);
+  assert.match(readFileSync(join(home, 'daemon.log'), 'utf8'), /queued\.evicted.*om_human_1/);
+  await fake.react({ messageId: 'om_human_2', emojiType: 'THUMBSUP' });
+  await waitFor(() => herdr.keys.length === 1, 'one key press');
+  assert.deepEqual(herdr.keys, [{ paneId: 'w1:p1', key: 'ctrl+enter' }]);
+  await daemon.stop();
+});
+
+test('a reaction that lands while the poll is swapping another message does not get its swap done twice', PER_TEST, async () => {
+  // Removing the first message's reaction is slowed down so the poll is mid-way through its snapshot when the reaction and the dequeue arrive.
+  const slow = async (req: { path: { message_id: string } }): Promise<{ code?: number }> => {
+    if (req.path.message_id === 'om_human_1') await sleep(300);
+    return { code: 0 };
+  };
+  const configDir = mkdtempSync(join(tmpdir(), 'al-claude-'));
+  homes.push(configDir);
+  mkdirSync(join(configDir, 'projects', '-p'), { recursive: true });
+  const transcript = join(configDir, 'projects', '-p', 'sess-1.jsonl');
+  writeFileSync(transcript, '');
+  const { daemon, fake, herdr, home } = await start({ reactionDelete: slow }, 50, { pollMs: 40, claudeConfigDir: configDir });
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking()];
+  await fake.message({ chatId: 'oc_x', content: 'one', messageId: 'om_human_1' });
+  await fake.message({ chatId: 'oc_x', content: 'two', messageId: 'om_human_2' });
+  await waitFor(() => fake.reactions.length === 2, 'two queued reactions');
+  appendFileSync(transcript, queueOp({ operation: 'remove', reason: 'absorbed_mid_turn', content: '[agent-lark remote] one' }));
+  await waitFor(() => /queued\.read.*om_human_1/.test(readFileSync(join(home, 'daemon.log'), 'utf8')), 'the poll to start swapping the first');
+  await fake.react({ messageId: 'om_human_2', emojiType: 'THUMBSUP' });
+  appendFileSync(transcript, queueOp({ operation: 'dequeue' }));
+  await sleep(500);
+  assert.equal(fake.removedReactions.filter((r) => r.messageId === 'om_human_2').length, 1, 'removed once');
+  assert.equal(emojisOn(fake, 'om_human_2').filter((e) => e === 'Get').length, 1, 'Get added once');
+  assert.equal(herdr.keys.length, 1);
+  await daemon.stop();
+});
+
+// ---- the failure paths around the reactions ----
+
+test('when Feishu refuses to take the queued reaction off (non-zero code), it is logged and Get is still added', PER_TEST, async () => {
+  const { daemon, fake, herdr, home, transcript } = await startWithTranscript({ reactionDelete: async () => ({ code: 230006, msg: 'no such reaction' }) });
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking()];
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  await waitFor(() => emojisOn(fake, 'om_human_1').length === 1, 'the queued reaction');
+  appendFileSync(transcript, queueOp({ operation: 'remove', reason: 'absorbed_mid_turn', content: '[agent-lark remote] hello there' }));
+  await waitFor(() => emojisOn(fake, 'om_human_1').includes('Get'), 'Get added all the same');
+  assert.match(readFileSync(join(home, 'daemon.log'), 'utf8'), /queued\.unmark-refused.*230006/);
+  await daemon.stop();
+});
+
+test('when the reaction removal throws, it is logged and Get is still added', PER_TEST, async () => {
+  const { daemon, fake, herdr, home, transcript } = await startWithTranscript({
+    reactionDelete: async () => {
+      throw new Error('socket hang up');
+    },
+  });
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking()];
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  await waitFor(() => emojisOn(fake, 'om_human_1').length === 1, 'the queued reaction');
+  appendFileSync(transcript, queueOp({ operation: 'remove', reason: 'absorbed_mid_turn', content: '[agent-lark remote] hello there' }));
+  await waitFor(() => emojisOn(fake, 'om_human_1').includes('Get'), 'Get added all the same');
+  assert.match(readFileSync(join(home, 'daemon.log'), 'utf8'), /queued\.unmark-failed/);
+  await daemon.stop();
+});
+
+test('when marking the message as queued throws, the message falls back to Get and is not watched', PER_TEST, async () => {
+  const added: Array<{ messageId: string; emoji: string }> = [];
+  const { daemon, fake, herdr, home } = await start({
+    addReaction: async (messageId, emoji) => {
+      if (emoji === QUEUE) throw new Error('reaction refused');
+      added.push({ messageId, emoji });
+      return `rid_${added.length}`;
+    },
+  });
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking()];
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  await waitFor(() => added.some((r) => r.emoji === 'Get'), 'the Get fallback');
+  assert.match(readFileSync(join(home, 'daemon.log'), 'utf8'), /queued\.mark-failed/);
+  await fake.react({ messageId: 'om_human_1', emojiType: 'THUMBSUP' });
+  await sleep(50);
+  assert.equal(herdr.keys.length, 0, 'not watched: a reaction does nothing');
+  await daemon.stop();
+});
+
+test('after a refused send-now, a later reaction tries again and succeeds', PER_TEST, async () => {
+  const { daemon, fake, herdr } = await start();
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking()];
+  await fake.message({ chatId: 'oc_x', content: 'hello there', messageId: 'om_human_1' });
+  await waitFor(() => emojisOn(fake, 'om_human_1').length === 1, 'the queued reaction');
+  herdr.keysOutcome = { ok: false, code: 'agent_blocked', message: 'busy' };
+  await fake.react({ messageId: 'om_human_1', emojiType: 'THUMBSUP' });
+  await waitFor(() => cardsSent(fake).length === 1, 'the receipt');
+  herdr.keysOutcome = { ok: true };
+  await fake.react({ messageId: 'om_human_1', emojiType: 'THUMBSUP' });
+  await waitFor(() => emojisOn(fake, 'om_human_1').includes('Get'), 'the swap on the second try');
+  assert.equal(herdr.keys.length, 2);
+  await daemon.stop();
+});
+
+test('a session id herdr reports that cannot be a file name is logged once and not watched', PER_TEST, async () => {
+  const { daemon, fake, herdr, home } = await start({}, 50, { pollMs: 40 });
+  await connected();
+  await request({ type: 'bind', root: '/p', label: 'p', paneId: 'w1:p1', chatId: 'oc_x' });
+  herdr.agents = [claudeWorking('w1:p1', '../../etc/passwd')];
+  await fake.message({ chatId: 'oc_x', content: 'one', messageId: 'om_human_1' });
+  await fake.message({ chatId: 'oc_x', content: 'two', messageId: 'om_human_2' });
+  await waitFor(() => fake.reactions.length === 2, 'both marked');
+  const logText = readFileSync(join(home, 'daemon.log'), 'utf8');
+  assert.equal((logText.match(/transcript\.invalid-session/g) ?? []).length, 1);
+  assert.doesNotMatch(logText, /passwd/, 'the offending value is not echoed');
+  await daemon.stop();
 });

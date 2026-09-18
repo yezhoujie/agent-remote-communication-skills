@@ -13,11 +13,29 @@ pin (`npx skills add 'yezhoujie/agent-remote-communication-skills#v0.1.2' --skil
 
 #### Added
 
+- Injection now follows the CLI in the target pane (`herdr agent list`). A **kimi** is woken with `ctrl+s`
+  after the prompt, as agent-ntfy already did (it reads its queue only between turns); a refused key gets a
+  `Maybe not delivered` receipt. A **claude that is working** gets no key: Claude Code hands queued text to
+  the model as soon as the running tool call ends, and its send-now key (`ctrl+enter`, ≥ 2.1.276)
+  interrupts that call — so the phone message is marked ✈️ (`StatusInFlight`) instead of `Get`, and
+  **a reaction the human adds to that message** makes the daemon press the key; the decision stays with
+  the human, per message, with nothing new in the group. ✈️ becomes `Get` by itself when the session
+  transcript records the entry as read or herdr reports the pane idle; after 30 minutes without either
+  sign the message is forgotten and ✈️ left as it is. The app needs the `im:message.reactions:read` scope
+  and the `im.message.reaction.created_v1` event — `setup` asks for them now; an existing app needs
+  `setup --update`. New `queued.*` / `transcript.*` log events; `references/daemon.md` §5 has
+  the table and the transcript caveat.
 - README §2.1: two Feishu accounts on one Mac — install the App Store build (`com.bytedance.macos.feishu`)
   next to the feishu.cn build (`com.electron.lark`); they are independent apps with their own data
   directories, so one account signs in to each with no script and no background service. The one limit
   (browser → desktop-client authorization always wakes the same one; this channel never goes through it) and
   a link to feishu-dual for those who need that re-routed.
+
+#### Fixed
+
+- A herdr refusal (`agent_not_found`, `agent_blocked`, …) was read as "herdr is not installed": herdr 0.9.1
+  prints the error envelope on stderr and exits 1, and the adapter only looked at stdout on exit 0. Both
+  streams are read now, so the receipt card names the real reason.
 
 ### [0.1.3][agent-lark-0.1.3] - 2026-09-16
 

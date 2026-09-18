@@ -229,6 +229,45 @@ When it cannot be delivered, the human gets an orange **`⚠️ [<dir>] Not deli
 If the human tells you they sent something you never received, the receipt card on their phone and
 `<home>/daemon.log` (`inject` events with the herdr code) are where to look.
 
+**After the prompt: by the CLI in the pane.** `herdr agent prompt` only puts the text where the agent
+will read it; when it gets read depends on the CLI, which the daemon takes from `herdr agent list`
+(`agent` and `agent_status` of the target pane):
+
+| target | what the daemon does after a successful prompt |
+|---|---|
+| `kimi` | presses `ctrl+s` (`herdr agent send-keys <pane> ctrl+s`): a kimi reads its queue only between turns, and this key pulls the text in without interrupting it; then the `Get` reaction. If the key is refused, the human gets an orange **`⚠️ [<dir>] Maybe not delivered`** card (`The message is in the agent's queue, but waking it failed (<code>); …`) — the text is queued but may not be read while the agent is busy — and `Get` is still added. |
+| `claude`, `agent_status` = `working` | nothing is pressed, and the message gets the **queued reaction** (`StatusInFlight`, ✈️) instead of `Get`. Claude Code passes queued text to the model as soon as the tool call it is running finishes (the same turn), so the wait is at most one tool call. The human decides, per message, whether that is too long: **adding any other reaction to their own message** (`im.message.reaction.created_v1`) makes the daemon press `ctrl+enter` — Claude Code ≥ 2.1.276's *send-now* key, which **interrupts the current turn** (the running tool call is cancelled) and sends everything queued at once — then swap ✈️ for `Get` (a removal Feishu refuses — `queued.unmark-refused` — leaves both reactions on the message). A refused key leaves the reactions alone, keeps watching the entry, and sends the **`Maybe not delivered`** receipt (`The interrupt could not be sent (<code>). …`). The daemon's own ✈️ echoed back as an event, removals, and reactions on messages it is not watching are ignored. |
+| `claude`, any other status · any other kind · no agent detected | nothing: `Get` as before. An idle claude reads the text at once; other CLIs are not exercised. |
+
+The queued reaction needs the app to have the `im:message.reactions:read` scope and the
+`im.message.reaction.created_v1` event (§4 of the README for how `setup` asks for them; an app set up
+before they were added needs `setup --update`, or both added by hand in the developer console). Without them the reaction events never arrive: the message is still marked ✈️, but a reaction
+on it does nothing, and ✈️ only becomes `Get` through the signals below.
+
+**Swapping ✈️ for `Get` without the human doing anything.** Every 5 s (the same poll as the stuck alert)
+the daemon looks for the moment claude read the entry:
+
+- *Transcript.* Claude Code appends the queue's life to the session transcript,
+  `<CLAUDE_CONFIG_DIR or ~/.claude>/projects/<encoded cwd>/<session id>.jsonl` (one JSON object per line),
+  as `"type":"queue-operation"` records: `enqueue` (with `content`, the injected line), `remove` with
+  `"reason":"absorbed_mid_turn"` (with `content`; the entry was passed to the model after a tool call) and
+  `dequeue` (no content; the whole queue went out as a turn — also what a `ctrl+enter` does). The daemon
+  takes the session id from `herdr agent list` (`agent_session.value`), finds the file by that name under
+  `projects/`, notes its size just before the prompt and reads only what is appended after it; a matching
+  `remove` settles that message, a `dequeue` settles every watched message of that session. Other records
+  change nothing — a `remove` without a reason or a `popAll` (the human took the queue back into the input
+  box), a `remove` quoting another line. **This is Claude Code's internal format, not a contract**: when
+  the file is missing (`transcript.missing` in the log, once per session) or its records change shape,
+  ✈️ simply stays until the fallback below — injection and the send-now reaction are not affected. To
+  check it still holds on a machine: `grep -h '"queue-operation"' ~/.claude/projects/*/*.jsonl | tail -3`
+  should show `enqueue` / `remove` / `dequeue` records like the above.
+- *Fallback.* herdr reporting the pane as no longer `working` (`idle`, `done`): the queue is empty by
+  then, so every watched message of that pane is settled.
+- *Expiry.* A message with neither signal for 30 minutes (the pane is gone, or the transcript no longer
+  matches) is forgotten (`queued.expired` in the log) and its ✈️ is **left as it is**: the daemon does not
+  know the outcome and does not pretend to. It also watches at most 20 messages at once (oldest forgotten)
+  and forgets all of them on restart; a reaction on a forgotten message does nothing.
+
 **The stuck alert.** Every 5 s the daemon runs `herdr agent list` for the bindings that have `away: true`
 and a pane. When a session's status changes *to* `blocked` (a permission prompt, a choice dialog — herdr's
 own judgement) and no question of that project is pending, it sends an orange **`🔔 [<dir>] waiting for
@@ -289,6 +328,7 @@ between two daily sweeps (§4). `daemon --status` does not report the bindings s
 | `AGENT_LARK_MEDIA_TTL_DAYS` | `7` | retention of `<home>/media/`; `0` = keep everything (§6) |
 | `AGENT_LARK_OFFLINE` | – | testing / offline only: `1` makes `setup` refuse to contact Feishu (rc 3 `offline: refusing to contact Feishu (AGENT_LARK_OFFLINE=1 is set)`) before the QR registration or the credential probe; the test runner sets it so no test can register an app by accident. Not for normal use |
 | `XDG_CONFIG_HOME` | `~/.config` (`%AppData%` on Windows) | `<config>` above is `$XDG_CONFIG_HOME/agent-lark` |
+| `CLAUDE_CONFIG_DIR` | `~/.claude` | where the daemon looks for Claude Code session transcripts (`projects/*/<session id>.jsonl`, §5), read from the **daemon's** environment: a claude started with another `CLAUDE_CONFIG_DIR` is not found, and its ✈️ is swapped for `Get` only on the idle fallback |
 | `HERDR_ENV`, `HERDR_PANE_ID` | set by herdr | detected, not configured: `HERDR_PANE_ID` is recorded on the binding as the injection target and is the pane a handed-off `setup --reuse` reports back to; `HERDR_ENV=1` is what `status`, `away on` and `setup --reuse` mean by "inside herdr" |
 
 Credentials are resolved in this order, highest first; `status` shows which layer won and marks every

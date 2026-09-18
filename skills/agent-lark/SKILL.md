@@ -271,6 +271,13 @@ the group, not you.
 **When you see the marker, the user is on the phone**: answer in the terminal as usual, and push the
 same answer with `notify` so it reaches them where they are.
 
+**While you are working**, a phone message waits in your CLI's queue. Claude Code hands it to you as soon
+as your current tool call ends (mid-turn, alongside that tool result); meanwhile the human's message
+carries a ✈️ reaction instead of `Get`. If they add a reaction of their own to it, your running tool call
+is cancelled and the message arrives at once as a new turn — that is the user's choice, not a fault: read
+the message, then decide what of the interrupted work to redo. ✈️ becomes `Get` by itself once you have
+read the entry. A kimi session is woken with `ctrl+s` instead. Details: `references/daemon.md` §5.
+
 Injection needs herdr (the daemon calls `herdr agent prompt <pane>`); the target pane is the one your
 last `agent-lark` command ran from. Outside herdr the human only ever gets the receipt card; `ask` and
 `notify` work the same everywhere.

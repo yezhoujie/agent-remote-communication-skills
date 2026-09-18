@@ -96,13 +96,13 @@ Either way, setup only stores credentials and the agent reports the outcome; tur
 
 ### 4.3 Scopes
 
-A QR-code setup asks for these on the confirmation page; an app you reuse must have the same ones enabled in the developer console (app → Permissions & Scopes), plus the event `im.message.receive_v1` and the card callback `card.action.trigger`, both delivered over Feishu's *long connection* — then publish a version, or nothing takes effect:
+A QR-code setup asks for these on the confirmation page; an app you reuse must have the same ones enabled in the developer console (app → Permissions & Scopes), plus the events `im.message.receive_v1`, `im.message.reaction.created_v1` and the card callback `card.action.trigger`, all delivered over Feishu's *long connection* — then publish a version, or nothing takes effect:
 
 ```
-im:message   im:message:send_as_bot   im:message.group_msg   im:chat   im:resource   im:message.urgent   speech_to_text:speech
+im:message   im:message:send_as_bot   im:message.group_msg   im:chat   im:resource   im:message.urgent   speech_to_text:speech   im:message.reactions:read
 ```
 
-`im:message.urgent` is for the urgent flag; `speech_to_text:speech` is for voice notes (paid tenants only, §7). Missing one after a QR-code setup? `agent-lark setup --update` adds it.
+`im:message.urgent` is for the urgent flag; `speech_to_text:speech` is for voice notes (paid tenants only, §7); `im:message.reactions:read` (with the reaction event) lets a reaction you add to a queued message reach the daemon (§5). Missing one after a QR-code setup? `agent-lark setup --update` adds it.
 
 ### 4.4 Credentials
 
@@ -116,7 +116,7 @@ Three places, highest first: `AGENT_LARK_APP_ID` / `AGENT_LARK_APP_SECRET` in th
 
 - **A question** is a blue card titled `🤔 [<project dir>] <title>`: what the agent is doing, the background, what is blocked, the numbered options with the recommended one marked, its reasoning, and one button per option. Tap a button, or **just type in the group** — while a question is pending, the first message you send there *is* the answer, whatever it says. The card turns green (`✅ … · Answered`) with your reply on top. Nobody answers ⇒ grey after the timeout (`⌛ … · Timed out`, 12 hours by default) or when the agent gave up (`⚠️ … · Cancelled`). Three variations: a form with checkboxes and a **Submit** button when several answers may apply; a red button behind a confirm dialog for an irreversible option (the agent may never recommend such an option); a red header plus Feishu's in-app *urgent* ping when the agent flags a question urgent.
 - **A notification** is a light-blue `📣` card with no button and no state: it never changes colour; replying to it is an instruction like any other message. The agent may also drop an image or a file into the group.
-- **Anything you send yourself** — while no question is pending — is typed into the agent's session as an instruction, prefixed `[agent-lark remote] `; once it has landed your message gets a `Get` reaction. Photos and files are saved on the machine and the agent is given their paths. A voice note is transcribed only on a paid Feishu tenant (§7); it is saved either way. Use Feishu's *reply* on one of the cards and the agent is told which card you mean.
+- **Anything you send yourself** — while no question is pending — is typed into the agent's session as an instruction, prefixed `[agent-lark remote] `; once it has landed your message gets a `Get` reaction. If the agent is busy (Claude Code), your message gets ✈️ instead: it reads it once its current command finishes. Cannot wait? **Add any reaction of your own to that message** — the agent stops its current command and reads yours at once (that cancels the command, so do it only when it matters). ✈️ turns into `Get` by itself once the agent has read it; after 30 minutes without any sign of that, ✈️ is left as it is (the daemon does not know, and does not pretend to). Photos and files are saved on the machine and the agent is given their paths. A voice note is transcribed only on a paid Feishu tenant (§7); it is saved either way. Use Feishu's *reply* on one of the cards and the agent is told which card you mean.
 - **🔔 `[<project dir>] waiting for you`** (orange; inside herdr only) means the agent is stuck on a prompt only you can answer — a permission dialog, a choice — and will wait until you are back at the keyboard.
 - The questions are JSON the agent writes (the contract is in [SKILL.md](SKILL.md)); you never write one.
 

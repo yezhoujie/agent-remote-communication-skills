@@ -96,13 +96,13 @@ agent-lark setup
 
 ### 4.3 权限清单
 
-扫码建应用时确认页申请的就是这些；复用的应用要你在开发者后台（应用 → 权限管理）手动开通同一批，外加事件 `im.message.receive_v1` 与卡片回调 `card.action.trigger`，两者都选「使用长连接接收」——然后发布一个版本，否则不生效：
+扫码建应用时确认页申请的就是这些；复用的应用要你在开发者后台（应用 → 权限管理）手动开通同一批，外加事件 `im.message.receive_v1`、`im.message.reaction.created_v1` 与卡片回调 `card.action.trigger`，都选「使用长连接接收」——然后发布一个版本，否则不生效：
 
 ```
-im:message   im:message:send_as_bot   im:message.group_msg   im:chat   im:resource   im:message.urgent   speech_to_text:speech
+im:message   im:message:send_as_bot   im:message.group_msg   im:chat   im:resource   im:message.urgent   speech_to_text:speech   im:message.reactions:read
 ```
 
-`im:message.urgent` 是加急要的；`speech_to_text:speech` 是语音转文字要的（只有付费租户可用，§7）。扫码建的应用之后缺了哪个？`agent-lark setup --update` 补上。
+`im:message.urgent` 是加急要的；`speech_to_text:speech` 是语音转文字要的（只有付费租户可用，§7）；`im:message.reactions:read`（连同表情事件）让你在排队消息上加的表情能传到 daemon（§5）。扫码建的应用之后缺了哪个？`agent-lark setup --update` 补上。
 
 ### 4.4 凭据
 
@@ -116,7 +116,7 @@ im:message   im:message:send_as_bot   im:message.group_msg   im:chat   im:resour
 
 - **一张提问**是蓝色卡片，标题「🤔 [<项目目录名>] <标题>」：agent 在做什么、背景、卡在哪、编号的选项（推荐项有标记）、它的理由，然后每个选项一个按钮。点按钮，或者**直接在群里打字**——提问挂着的时候，你在群里发的第一条消息**就是**答复，不管内容是什么。卡片变绿（「✅ … · 已回答」），你的回复在最上面。没人回答 ⇒ 超时后变灰（「⌛ … · 已超时」，默认 12 小时），agent 放弃时也变灰（「⚠️ … · 已取消」）。三个变体：答案可能是好几项时是一组复选框加**提交**按钮；不可逆的选项是红色按钮加二次确认（agent 永远不能推荐这种选项）；agent 标了加急时卡头是红色、并在飞书里加急提醒你。
 - **一条通知**是浅蓝色的「📣」卡片，没有按钮、没有状态：永远不变色，回复它就是一条普通指令。agent 也可能往群里发一张图或一个文件。
-- **你主动发的任何内容**——没有提问挂着时——会作为一句指令打进 agent 的会话，前缀 `[agent-lark remote] `；送到后你那条消息会被贴上 `Get` 表情。图片和文件会存到机器上、把路径给 agent。语音只在飞书付费租户上会转成文字（§7），但不管怎样都会保存。用飞书的「回复」功能回某张卡片，agent 会知道你指的是哪张。
+- **你主动发的任何内容**——没有提问挂着时——会作为一句指令打进 agent 的会话，前缀 `[agent-lark remote] `；送到后你那条消息会被贴上 `Get` 表情。agent 正忙着时（Claude Code），你的消息会先被贴上 ✈️：它跑完手头那条命令就会读到。等不得？**在你那条消息上加一个任意表情**——agent 会停下手头的命令立刻读你的（那条命令会被杀掉，所以只在要紧时这么做）。agent 读到后 ✈️ 会自己变成 `Get`；30 分钟都没等到它读到的信号，✈️ 就留在那里不动（daemon 不知道结局，也不装作知道）。图片和文件会存到机器上、把路径给 agent。语音只在飞书付费租户上会转成文字（§7），但不管怎样都会保存。用飞书的「回复」功能回某张卡片，agent 会知道你指的是哪张。
 - **🔔「[<项目目录名>] 等你输入」**（橙色；只在 herdr 里有）表示 agent 卡在只有你能回答的提示上——权限确认、选择题——它会一直等到你回到键盘旁。
 - 提问是 agent 写的 JSON（契约在 [SKILL.md](SKILL.md)）；你永远不用写。
 

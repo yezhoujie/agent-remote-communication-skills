@@ -1,6 +1,6 @@
 // An in-memory stand-in for the Feishu channel: records what the daemon sends,
 // exposes the event handlers it registered so a test can play the phone.
-import type { CardActionEvent, CardActionResponse, EventMap, NormalizedMessage } from '@larksuite/channel';
+import type { CardActionEvent, CardActionResponse, EventMap, NormalizedMessage, ReactionEvent } from '@larksuite/channel';
 import type { ChannelLike } from '../../../skills/agent-lark/src/daemon.js';
 
 export type SentItem = { chatId: string; input: unknown } | { update: string; card: object };
@@ -13,6 +13,8 @@ export interface FakeChannelOptions {
   getChatInfo?: ChannelLike['getChatInfo'];
   createChat?: ChannelLike['createChat'];
   addReaction?: ChannelLike['addReaction'];
+  /** Answers `rawClient.im.v1.messageReaction.delete` (default: accepted); every call is also recorded in `removedReactions`. Lets a test refuse or slow it down. */
+  reactionDelete?: (req: { path: { message_id: string; reaction_id: string } }) => Promise<{ code?: number; msg?: string }>;
   /** Replaces the attachment download; a test can make it succeed without a file or fail. */
   downloadResourceToFile?: ChannelLike['downloadResourceToFile'];
   /** Answers `rawClient.im.v1.chat.update`; every call is also recorded in `renames`. */
@@ -77,10 +79,14 @@ export interface FakeChannel {
   urgents: UrgentAppRequest[];
   /** Reactions added with the default addReaction (a configured one is not recorded). */
   reactions: Array<{ messageId: string; emoji: string }>;
+  /** Reactions removed through rawClient, oldest first (recorded whether or not a reactionDelete is configured). */
+  removedReactions: Array<{ messageId: string; reactionId: string }>;
   /** Deliver a message as if the human typed it in the group. */
   message(partial: Partial<NormalizedMessage> & { chatId: string; content: string }): Promise<void>;
   /** Tap a button on a card. */
   cardAction(evt: CardActionEvent): Promise<void | CardActionResponse>;
+  /** Add or remove a reaction as if the human did it on the phone. */
+  react(partial: Partial<ReactionEvent> & { messageId: string; emojiType: string }): Promise<void>;
 }
 
 const notImplemented = (name: string) => async (): Promise<never> => {
@@ -99,6 +105,7 @@ export function createFakeChannel(opts: FakeChannelOptions = {}): FakeChannel {
     listCalls: [],
     urgents: [],
     reactions: [],
+    removedReactions: [],
     channel: undefined as unknown as ChannelLike,
     async message(partial) {
       const evt: NormalizedMessage = {
@@ -118,6 +125,10 @@ export function createFakeChannel(opts: FakeChannelOptions = {}): FakeChannel {
     },
     async cardAction(evt) {
       return fake.handlers.cardAction?.(evt);
+    },
+    async react(partial) {
+      const evt: ReactionEvent = { operator: { openId: 'ou_human' }, action: 'added', ...partial };
+      await fake.handlers.reaction?.(evt);
     },
   };
   let connected = false;
@@ -141,13 +152,19 @@ export function createFakeChannel(opts: FakeChannelOptions = {}): FakeChannel {
       return opts.chatList!(req);
     };
   if (Object.keys(chat).length) rawV1.chat = chat;
+  const message: Record<string, unknown> = {};
   if (opts.urgentApp)
-    rawV1.message = {
-      urgentApp: async (req: UrgentAppRequest): Promise<UrgentAppResult> => {
-        fake.urgents.push(req);
-        return opts.urgentApp!(req);
-      },
+    message.urgentApp = async (req: UrgentAppRequest): Promise<UrgentAppResult> => {
+      fake.urgents.push(req);
+      return opts.urgentApp!(req);
     };
+  if (Object.keys(message).length) rawV1.message = message;
+  rawV1.messageReaction = {
+    delete: async (req: { path: { message_id: string; reaction_id: string } }): Promise<{ code?: number; msg?: string }> => {
+      fake.removedReactions.push({ messageId: req.path.message_id, reactionId: req.path.reaction_id });
+      return opts.reactionDelete ? opts.reactionDelete(req) : { code: 0 };
+    },
+  };
   const rawClient =
     opts.rawClient ??
     (Object.keys(rawV1).length ? { im: { v1: rawV1 } } : undefined) ??

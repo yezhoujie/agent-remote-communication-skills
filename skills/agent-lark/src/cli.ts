@@ -36,6 +36,8 @@ const DEFAULT_SCOPES = [
   'im:message.urgent',
   // Voice messages arrive as an opaque `<audio/>` placeholder without this.
   'speech_to_text:speech',
+  // The reaction event (a human marking their own queued message) is not delivered without this.
+  'im:message.reactions:read',
 ];
 
 /** Non-Error throws are common in SDKs; never let them print [object Object]. */
@@ -455,7 +457,7 @@ async function runQr(
       },
       addons: {
         scopes: { tenant: scopes },
-        events: { items: { tenant: ['im.message.receive_v1'] } },
+        events: { items: { tenant: ['im.message.receive_v1', 'im.message.reaction.created_v1'] } },
         callbacks: { items: ['card.action.trigger'] },
       },
       onQRCodeReady: ({ url, expireIn }) => {

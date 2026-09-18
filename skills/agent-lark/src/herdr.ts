@@ -7,6 +7,8 @@ export type AgentStatus = 'idle' | 'working' | 'blocked' | 'done' | 'unknown';
 
 export interface AgentInfo {
   agent: string;
+  /** The agent's own session id as herdr detected it (claude: the id its transcript file is named after). */
+  agent_session?: { agent: string; kind: string; source: string; value: string };
   agent_status: AgentStatus;
   cwd: string;
   foreground_cwd?: string;
@@ -16,7 +18,11 @@ export interface AgentInfo {
   workspace_id?: string;
 }
 
-/** herdr answers with `{error:{code,message}}` on stdout and still exits 0. */
+/**
+ * herdr's answer envelope. A refusal is `{error:{code,message}}`: herdr 0.9.1
+ * prints it on stderr and exits 1 (older builds put it on stdout with exit 0),
+ * so both streams are read for it.
+ */
 interface HerdrEnvelope<T> {
   id?: string;
   result?: T;
@@ -71,23 +77,31 @@ export interface PromptOutcome {
   message?: string;
 }
 
+/** Read one agent-side answer: the envelope on either stream, else the spawn failure. */
+function outcomeOf(r: HerdrRun): PromptOutcome {
+  for (const stream of [r.stdout, r.stderr ?? '']) {
+    if (!stream.trim()) continue;
+    const env = parse<unknown>(stream);
+    if (env.error?.code === 'bad_output') continue; // not an envelope; the other stream may hold one
+    if (env.error) return { ok: false, code: env.error.code, message: env.error.message };
+    return { ok: true };
+  }
+  if (r.ok) return { ok: false, code: 'bad_output', message: (r.stdout.trim() || r.stderr || '').slice(0, 200) };
+  return { ok: false, code: 'spawn_failed', message: r.error ?? 'herdr failed' };
+}
+
 /**
  * Inject one line into a pane's agent. herdr refuses the submission outright
  * when the agent is already blocked (`agent_blocked`) — that is a real
  * outcome the caller must report to the phone, not a transport failure.
  */
-export async function promptPane(paneId: string, text: string): Promise<PromptOutcome> {
-  try {
-    const { stdout } = await execFileAsync('herdr', ['agent', 'prompt', paneId, text], {
-      timeout: 20_000,
-      maxBuffer: 1024 * 1024,
-    });
-    const env = parse<unknown>(stdout);
-    if (env.error) return { ok: false, code: env.error.code, message: env.error.message };
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, code: 'spawn_failed', message: err instanceof Error ? err.message : String(err) };
-  }
+export async function promptPane(paneId: string, text: string, run: HerdrRunner = (args) => runHerdr(args, 20_000)): Promise<PromptOutcome> {
+  return outcomeOf(await run(['agent', 'prompt', paneId, text]));
+}
+
+/** Press one logical key in a pane's agent (`ctrl+s`, `ctrl+enter`, `esc`, …); herdr validates the key name before writing anything. */
+export async function sendKeys(paneId: string, key: string, run: HerdrRunner = runHerdr): Promise<PromptOutcome> {
+  return outcomeOf(await run(['agent', 'send-keys', paneId, key]));
 }
 
 /** Best-effort: the pane currently running an agent in this project. */
@@ -104,18 +118,19 @@ export function findPaneForProject(agents: AgentInfo[], root: string): string | 
 export interface HerdrRun {
   ok: boolean;
   stdout: string;
+  stderr?: string;
   error?: string;
 }
 export type HerdrRunner = (args: string[]) => Promise<HerdrRun>;
 
 /** The default runner: `herdr <args>` with a 10 s limit; a missing binary is `ok: false` like any other failure. */
-export const runHerdr: HerdrRunner = async (args) => {
+export const runHerdr = async (args: string[], timeoutMs = 10_000): Promise<HerdrRun> => {
   try {
-    const { stdout } = await execFileAsync('herdr', args, { timeout: 10_000, maxBuffer: 1024 * 1024 });
-    return { ok: true, stdout };
+    const { stdout, stderr } = await execFileAsync('herdr', args, { timeout: timeoutMs, maxBuffer: 1024 * 1024 });
+    return { ok: true, stdout, stderr };
   } catch (err) {
-    const e = err as { stdout?: string; message?: string };
-    return { ok: false, stdout: e.stdout ?? '', error: e.message ?? String(err) };
+    const e = err as { stdout?: string; stderr?: string; message?: string };
+    return { ok: false, stdout: e.stdout ?? '', stderr: e.stderr ?? '', error: e.message ?? String(err) };
   }
 };
 

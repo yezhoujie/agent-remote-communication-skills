@@ -197,6 +197,13 @@ The daemon looks up the slot's lease and injects the text into the recorded pane
 unchanged. The daemon does not check whether the target is busy; your CLI queues input on its own. It
 does check that the pane still exists.
 
+A claude target gets the prompt only. Claude Code passes queued text to the model as soon as the tool call
+it is running finishes, so the wait is at most one tool call; its *send-now* key (`ctrl+enter`, Claude
+Code ≥ 2.1.276) would deliver at once but **interrupts the current turn** — cancelling the running tool
+call — so the daemon never presses it, and does not offer a way to ask for it either: that would cost one
+more notification per message against ntfy.sh's daily quota (`AGENT_NTFY_URL`, §7). (agent-lark lets the
+human ask for it with a reaction on their own message.)
+
 If there is no lease, the lease has no pane (its commands were never run from inside herdr), the pane is
 gone, or herdr is not available, the human gets a receipt on the phone (`[slotN] Message not delivered`)
 with `Release slot` / `Ignore` buttons. Those buttons are handled by the daemon and never reach any agent.

@@ -33,7 +33,7 @@ Sources, so you can check: agent-ntfy's [README](skills/agent-ntfy/README.md) (�
 | **What comes back to the agent** | The recommended option's label on a tap, or your text | The tapped option's label, the ticked labels joined with `、`, or your text |
 | **Agent → phone besides questions** | `notify` (title + body) | `notify` (title + body), `send-file` (an image or a file), `--urgent` on a question (Feishu's in-app urgent ping) |
 | **Phone → agent besides text** | Text only | Photos and files (downloaded, path handed to the agent), voice notes (transcribed; needs a paid Feishu tenant), Feishu replies to a card arrive with that card's title |
-| **Delivery feedback on the phone** | A receipt card only when a message could not be delivered | A `Get` reaction on every message that reached the terminal; a receipt card when it could not |
+| **Delivery feedback on the phone** | A receipt card only when a message could not be delivered | A `Get` reaction on every message that reached the terminal (✈️ while a busy Claude Code has it queued — add a reaction of your own to have it sent at once); a receipt card when it could not |
 | **Stuck-agent alert** | None | 🔔 card when herdr reports the session blocked on a prompt (remote mode on, at most once a minute) |
 | **Message size** | Card body ≤ 3584 bytes, title ≤ 960 bytes (ntfy limits) | Title ≤ 200 characters, each text field ≤ 4000, `notify` body ≤ 8000 |
 | **Retention** | ntfy.sh caches a message 12 hours; a phone offline longer misses it (default `ask` timeout is 12 h for that reason) | The card is a message in the group; nothing expires on the channel side (default `ask` timeout is also 12 h) |

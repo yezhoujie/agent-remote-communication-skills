@@ -1,13 +1,13 @@
-import { appendFileSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmdirSync, statSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
+import { appendFileSync, closeSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, rmdirSync, statSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { basename, join, sep } from 'node:path';
-import { platform, tmpdir } from 'node:os';
+import { homedir, platform, tmpdir } from 'node:os';
 import type { Server, Socket } from 'node:net';
-import { createLarkChannel, type CardActionEvent, type LarkChannel, type LarkChannelOptions, type NormalizedMessage } from '@larksuite/channel';
+import { createLarkChannel, type CardActionEvent, type LarkChannel, type LarkChannelOptions, type NormalizedMessage, type ReactionEvent } from '@larksuite/channel';
 import { BindingStore, BindingsFileError, groupName, taskNameProblem, type Binding } from './bindings.js';
 import { askCard, checkerName, notifyCard, optionIdOf, receiptCard, statusCard } from './cards.js';
 import { resolveCreds } from './creds.js';
-import { agentList, findPaneForProject, promptPane } from './herdr.js';
+import { agentList, findPaneForProject, promptPane, sendKeys, type AgentInfo } from './herdr.js';
 import { isDaemonListening, serve, type Candidate, type Request, type Response } from './ipc.js';
 import { ensureHomeDir, homeDir, ipcEndpoint, logPath, mediaDir, pidPath, sockPath, sockPathProblem, writeProjectState } from './paths.js';
 import { fill, msg, t } from './texts.js';
@@ -142,6 +142,7 @@ export type ChannelLike = Pick<
 export interface HerdrDeps {
   agentList: typeof agentList;
   promptPane: typeof promptPane;
+  sendKeys: typeof sendKeys;
   findPaneForProject: typeof findPaneForProject;
 }
 
@@ -154,6 +155,10 @@ export interface DaemonDeps {
   pollMs?: number;
   /** How often the media directory and the bindings are swept (the first media sweep runs at start, the first bindings sweep on the first handshake). */
   sweepMs?: number;
+  /** Where Claude Code keeps its session transcripts (`<dir>/projects/<project>/<session id>.jsonl`); default `$CLAUDE_CONFIG_DIR`, else `~/.claude`. */
+  claudeConfigDir?: string;
+  /** How long a queued phone message is watched for a sign that claude read it before it is forgotten. */
+  queuedMaxAgeMs?: number;
 }
 
 export interface DaemonHandle {
@@ -250,6 +255,14 @@ interface Pending {
 const CLOSED_KEEP = 50;
 /** How many sent cards are remembered, so a message quoting one can say which. */
 const SENT_CARDS_KEEP = 200;
+/** Queued messages watched at once; beyond this the oldest is forgotten (a reaction on it then does nothing). */
+const QUEUED_KEEP = 20;
+/** A queued message with no sign of being read (transcript, idle) for this long is forgotten: by then both signals are gone. */
+const QUEUED_MAX_AGE_MS = 30 * 60_000;
+/** The reaction that marks a phone message as waiting in a busy claude's queue. */
+const QUEUE_EMOJI = 'StatusInFlight';
+/** Transcript bytes read per poll and watched message; a chatty session's backlog is drained over a few polls. */
+const TRANSCRIPT_READ_MAX = 4 * 1024 * 1024;
 
 /**
  * A checker inside a form reports its state in a shape the card docs do not
@@ -272,7 +285,7 @@ export async function runDaemon(deps: DaemonDeps = {}): Promise<DaemonHandle> {
   ensureHomeDir();
   // A live daemon must not be duplicated; a dead socket file is not a daemon.
   if (await isDaemonListening(2000)) throw new DaemonStartError(3, msg.daemonAlready);
-  const herdr: HerdrDeps = deps.herdr ?? { agentList, promptPane, findPaneForProject };
+  const herdr: HerdrDeps = deps.herdr ?? { agentList, promptPane, sendKeys, findPaneForProject };
   const retryMs = deps.connectRetryMs ?? CONNECT_RETRY_MS;
   const ttl = mediaTtlDays();
   if (ttl.invalid !== undefined) {
@@ -382,10 +395,10 @@ export async function runDaemon(deps: DaemonDeps = {}): Promise<DaemonHandle> {
   /** The language of cards the daemon sends on its own: the project's last ask / notify, else English. */
   const langOf = (b: Binding | undefined): Lang => b?.lang ?? 'en';
 
-  const receipt = async (b: Binding, why: string): Promise<void> => {
+  const receipt = async (b: Binding, why: string, uncertain = false): Promise<void> => {
     try {
-      const sent = await channel.send(b.chatId, { card: receiptCard(b.label, why, langOf(b)) });
-      rememberCard(sent.messageId, 'receipt', t(langOf(b)).notDelivered);
+      const sent = await channel.send(b.chatId, { card: receiptCard(b.label, why, langOf(b), uncertain) });
+      rememberCard(sent.messageId, 'receipt', uncertain ? t(langOf(b)).maybeNotDelivered : t(langOf(b)).notDelivered);
     } catch (err) {
       log('receipt.failed', { root: b.root, err: String(err) });
     }
@@ -408,25 +421,212 @@ export async function runDaemon(deps: DaemonDeps = {}): Promise<DaemonHandle> {
   };
 
   /**
+   * A phone message that reached a busy claude and is waiting in its queue,
+   * marked on the phone with the queued reaction. Keyed by the phone message id.
+   */
+  interface Queued {
+    b: Binding;
+    paneId: string;
+    /** The claude session whose transcript records when the queue entry is read; unknown when herdr did not report one. */
+    sessionId?: string;
+    /** The injected line, prefix included: what the transcript's queue records quote. */
+    text: string;
+    /** When the message was queued (epoch ms), for the expiry. */
+    since: number;
+    /** The queued reaction's id, to take it off again. */
+    reactionId: string;
+    /** The session's transcript and how far it had been written before the prompt; absent when there is none to watch. */
+    transcript?: { path: string; offset: number };
+  }
+  const queued = new Map<string, Queued>();
+  const claudeDir = deps.claudeConfigDir ?? process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude');
+  const queuedMaxAgeMs = deps.queuedMaxAgeMs ?? QUEUED_MAX_AGE_MS;
+  const transcriptMissingLogged = new Set<string>();
+
+  /**
+   * The transcript Claude Code writes for a session: `<config>/projects/<encoded cwd>/<session id>.jsonl`.
+   * Found by file name under every project directory, so the cwd encoding
+   * need not be known. Its `queue-operation` records say when a queued
+   * message was read — an internal format, not a contract: when it is not
+   * there or changes shape, the queued reaction simply stays until herdr
+   * reports the agent idle.
+   */
+  const transcriptFor = (sessionId: string): string | null => {
+    if (!/^[A-Za-z0-9-]+$/.test(sessionId)) {
+      // Not a file name we would build a path from; said once, without echoing the value.
+      if (!transcriptMissingLogged.has(sessionId)) {
+        transcriptMissingLogged.add(sessionId);
+        log('transcript.invalid-session', { length: sessionId.length });
+      }
+      return null;
+    }
+    try {
+      for (const dir of readdirSync(join(claudeDir, 'projects'))) {
+        const path = join(claudeDir, 'projects', dir, `${sessionId}.jsonl`);
+        if (existsSync(path)) return path;
+      }
+    } catch {
+      // no projects directory at all: same as no transcript
+    }
+    if (!transcriptMissingLogged.has(sessionId)) {
+      transcriptMissingLogged.add(sessionId);
+      log('transcript.missing', { session: sessionId });
+    }
+    return null;
+  };
+
+  /** The transcript to watch for a busy claude, positioned at its current end so only records written after the prompt count. */
+  const transcriptToWatch = (agent: AgentInfo | undefined): Queued['transcript'] | undefined => {
+    const sessionId = agent?.agent === 'claude' && agent.agent_status === 'working' ? agent.agent_session?.value : undefined;
+    if (!sessionId) return undefined;
+    const path = transcriptFor(sessionId);
+    if (!path) return undefined;
+    try {
+      return { path, offset: statSync(path).size };
+    } catch {
+      return undefined;
+    }
+  };
+
+  /**
+   * Complete lines appended to `path` after `offset`, and the offset just past
+   * the last of them. Byte offsets throughout (a half-written line, or an
+   * offset inside a multi-byte character, must not shift the next read); at
+   * most `TRANSCRIPT_READ_MAX` bytes per call, the rest on the next poll.
+   */
+  const readAppended = (path: string, offset: number): { lines: string[]; end: number } => {
+    const size = statSync(path).size;
+    if (size <= offset) return { lines: [], end: offset };
+    const fd = openSync(path, 'r');
+    try {
+      const buf = Buffer.alloc(Math.min(size - offset, TRANSCRIPT_READ_MAX));
+      const n = readSync(fd, buf, 0, buf.length, offset);
+      const cut = buf.subarray(0, n).lastIndexOf(0x0a);
+      // A full read window with no line break is one giant line: a queue record cannot be inside it, so skip it rather than re-read it every poll.
+      if (cut < 0) return { lines: [], end: n === TRANSCRIPT_READ_MAX ? offset + n : offset };
+      return { lines: buf.subarray(0, cut).toString('utf8').split('\n'), end: offset + cut + 1 };
+    } finally {
+      closeSync(fd);
+    }
+  };
+
+  /**
+   * Take the queued reaction off the phone message and put Get on it: the
+   * terminal has the text now. The removal goes through the raw client so a
+   * refusal (HTTP 200 with a non-zero code, which the SDK does not throw on)
+   * is seen; either way Get is added, so a failed removal leaves both.
+   */
+  const swapForGet = async (msgKey: string, q: Queued): Promise<void> => {
+    try {
+      const res = await (channel.rawClient as unknown as {
+        im: { v1: { messageReaction: { delete(req: unknown): Promise<unknown> } } };
+      }).im.v1.messageReaction.delete({ path: { message_id: msgKey, reaction_id: q.reactionId } });
+      const refused = feishuError(res);
+      if (refused) log('queued.unmark-refused', { root: q.b.root, msgKey, code: refused.code });
+    } catch (err) {
+      log('queued.unmark-failed', { root: q.b.root, msgKey, err: String(err).slice(0, 200) });
+    }
+    try {
+      await channel.addReaction(msgKey, 'Get');
+    } catch (err) {
+      log('reaction.failed', { messageId: msgKey, err: String(err).slice(0, 200) });
+    }
+  };
+
+  /**
+   * The entry was read the ordinary way ⇒ its reaction becomes Get. Waited too
+   * long with no sign either way ⇒ the entry is forgotten and the reaction is
+   * left as it is: the daemon does not know the outcome and does not pretend to.
+   */
+  const closeQueued = async (msgKey: string, q: Queued, why: 'absorbed' | 'dequeued' | 'idle' | 'expired'): Promise<void> => {
+    // The poll works on a snapshot; a reaction (or an overlapping poll) may have closed this one meanwhile.
+    if (!queued.delete(msgKey)) return;
+    if (why === 'expired') {
+      log('queued.expired', { root: q.b.root, paneId: q.paneId, msgKey });
+      return;
+    }
+    log('queued.read', { root: q.b.root, paneId: q.paneId, msgKey, why });
+    await swapForGet(msgKey, q);
+  };
+
+  /**
+   * Settle the queue entries claude has read: by the transcript's
+   * records (`remove` with reason `absorbed_mid_turn` quoting the line, or
+   * `dequeue`, which empties the whole queue as a turn), else by herdr
+   * reporting the pane no longer working, when the queue is necessarily empty.
+   */
+  const settleQueued = async (live: AgentInfo[]): Promise<void> => {
+    for (const [msgKey, q] of [...queued]) {
+      if (Date.now() - q.since >= queuedMaxAgeMs) {
+        await closeQueued(msgKey, q, 'expired');
+        continue;
+      }
+      const a = live.find((x) => x.pane_id === q.paneId);
+      if (a && a.agent_status !== 'working' && a.agent_status !== 'blocked' && a.agent_status !== 'unknown') {
+        await closeQueued(msgKey, q, 'idle');
+        continue;
+      }
+      if (!q.transcript) continue;
+      let appended: { lines: string[]; end: number };
+      try {
+        appended = readAppended(q.transcript.path, q.transcript.offset);
+      } catch (err) {
+        log('transcript.read-failed', { path: q.transcript.path, err: String(err).slice(0, 200) });
+        continue;
+      }
+      q.transcript.offset = appended.end;
+      for (const line of appended.lines) {
+        let rec: { type?: string; operation?: string; reason?: string; content?: string };
+        try {
+          rec = JSON.parse(line) as typeof rec;
+        } catch {
+          continue;
+        }
+        if (rec.type !== 'queue-operation') continue;
+        if (rec.operation === 'dequeue') {
+          await closeQueued(msgKey, q, 'dequeued');
+          break;
+        }
+        if (rec.operation === 'remove' && rec.reason === 'absorbed_mid_turn' && rec.content === q.text) {
+          await closeQueued(msgKey, q, 'absorbed');
+          break;
+        }
+      }
+    }
+  };
+
+  /**
    * Deliver a free-standing phone message into the project's pane. `reactTo`
    * is the human's message: once delivered it gets a "Get" reaction, the one
    * sign on the phone that the terminal has it.
+   *
+   * What happens after the prompt depends on the CLI in the pane. A kimi
+   * only reads its queue between turns, so it is woken with ctrl+s. A claude
+   * reads queued text as soon as its current tool call ends; while it is
+   * working, the message is marked queued instead of Get, and a reaction the
+   * human adds on it sends the text at once (ctrl+enter), which interrupts
+   * that call — a choice left to the human, per message.
    */
   const inject = async (b: Binding, text: string, reactTo?: string): Promise<void> => {
     try {
+      const live = await herdr.agentList();
       let paneId = b.paneId;
-      if (!paneId) paneId = herdr.findPaneForProject(await herdr.agentList(), b.root);
+      if (!paneId) paneId = herdr.findPaneForProject(live, b.root);
       if (!paneId) {
         await receipt(b, t(langOf(b)).receiptNoPane);
         return;
       }
-      const outcome = await herdr.promptPane(paneId, `${INJECT_PREFIX}${text}`);
+      const line = `${INJECT_PREFIX}${text}`;
+      const agent = live.find((a) => a.pane_id === paneId);
+      const transcript = transcriptToWatch(agent);
+      const outcome = await herdr.promptPane(paneId, line);
       log('inject', { root: b.root, paneId, ok: outcome.ok, code: outcome.code });
       if (!outcome.ok) {
         await receipt(b, explainPromptFailure(outcome.code, outcome.message, langOf(b)));
         return;
       }
-      if (!reactTo) return;
+      const marked = await afterPrompt(b, paneId, agent, line, reactTo, transcript);
+      if (!reactTo || marked) return;
       try {
         await channel.addReaction(reactTo, 'Get');
       } catch (err) {
@@ -436,6 +636,61 @@ export async function runDaemon(deps: DaemonDeps = {}): Promise<DaemonHandle> {
       // The adapter promises not to throw; if it ever does, the daemon must not die of it.
       log('inject.failed', { root: b.root, err: String(err).slice(0, 200) });
     }
+  };
+
+  /**
+   * The per-CLI step after a prompt was accepted: wake a kimi; mark a busy
+   * claude's message as queued. Returns whether the message got its reaction
+   * here (so the caller does not add Get on top).
+   */
+  const afterPrompt = async (
+    b: Binding,
+    paneId: string,
+    agent: AgentInfo | undefined,
+    line: string,
+    reactTo?: string,
+    transcript?: Queued['transcript'],
+  ): Promise<boolean> => {
+    if (agent?.agent === 'kimi') {
+      const woken = await herdr.sendKeys(paneId, 'ctrl+s');
+      log('inject.wake', { root: b.root, paneId, ok: woken.ok, code: woken.code });
+      if (!woken.ok) await receipt(b, fill(t(langOf(b)).wakeFailed, { why: [woken.code, woken.message].filter(Boolean).join(' ') || '?' }), true);
+      return false;
+    }
+    if (agent?.agent !== 'claude' || agent.agent_status !== 'working' || !reactTo) return false;
+    try {
+      const reactionId = await channel.addReaction(reactTo, QUEUE_EMOJI);
+      queued.set(reactTo, { b, paneId, sessionId: agent.agent_session?.value, text: line, since: Date.now(), reactionId, transcript });
+      while (queued.size > QUEUED_KEEP) {
+        const oldest = queued.keys().next().value!;
+        queued.delete(oldest);
+        log('queued.evicted', { root: b.root, msgKey: oldest });
+      }
+      log('queued.marked', { root: b.root, paneId, msgKey: reactTo, transcript: !!transcript });
+      return true;
+    } catch (err) {
+      // Could not mark it: the text is queued all the same; fall back to the plain Get.
+      log('queued.mark-failed', { root: b.root, msgKey: reactTo, err: String(err).slice(0, 200) });
+      return false;
+    }
+  };
+
+  /**
+   * The human put a reaction on a message that is waiting in a busy claude's
+   * queue: send it now. ctrl+enter interrupts the agent's current turn and
+   * delivers everything queued; the queued reaction becomes Get. A refused
+   * key leaves the reactions alone, puts the entry back so the ordinary
+   * signals still close it, and sends a receipt.
+   */
+  const sendNow = async (msgKey: string, q: Queued): Promise<void> => {
+    const r = await herdr.sendKeys(q.paneId, 'ctrl+enter');
+    log('queued.interrupt', { root: q.b.root, paneId: q.paneId, msgKey, ok: r.ok, code: r.code });
+    if (r.ok) {
+      await swapForGet(msgKey, q);
+      return;
+    }
+    queued.set(msgKey, q);
+    await receipt(q.b, fill(t(langOf(q.b)).interruptFailed, { why: [r.code, r.message].filter(Boolean).join(' ') || '?' }), true);
   };
 
   /**
@@ -557,6 +812,20 @@ export async function runDaemon(deps: DaemonDeps = {}): Promise<DaemonHandle> {
     const quoted = sentCards.get(incoming.replyToMessageId ?? incoming.rootId ?? '');
     if (quoted) text = `${fill(msg.replyTo, { title: quoted.title })}\n${text}`;
     await inject(b, text, incoming.messageId);
+  }));
+
+  // A reaction on a queued phone message is the human's "send it now". The
+  // queued reaction itself (the daemon's own, should Feishu echo it back as an
+  // event) and removals do not count; a reaction on any other message is
+  // nothing to us. Any member of the group can do it, as any member's message
+  // is injected.
+  channel.on('reaction', guarded('reaction', async (evt: ReactionEvent) => {
+    if (evt.action !== 'added' || evt.emojiType === QUEUE_EMOJI) return;
+    const q = queued.get(evt.messageId);
+    if (!q) return;
+    queued.delete(evt.messageId);
+    log('reaction.received', { messageId: evt.messageId, emoji: evt.emojiType, operator: evt.operator.openId });
+    await sendNow(evt.messageId, q);
   }));
 
   // Feishu waits three seconds for the callback response, so nothing in here
@@ -838,8 +1107,9 @@ export async function runDaemon(deps: DaemonDeps = {}): Promise<DaemonHandle> {
   // ---- agent state pushes -------------------------------------------------
   const poll = async (): Promise<void> => {
     const away = bindings.activeAll().filter((b) => b.away && b.paneId);
-    if (!away.length) return;
+    if (!away.length && !queued.size) return;
     const live = await agents();
+    if (queued.size) await settleQueued(live);
     for (const b of away) {
       if (pendingFor(b.root)) continue;
       const a = live.find((x) => x.pane_id === b.paneId);

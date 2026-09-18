@@ -136302,6 +136302,9 @@ var init_texts = __esm({
       // receipt card
       notDelivered: "\u6CA1\u80FD\u9001\u8FBE",
       notDeliveredBody: "\u521A\u624D\u90A3\u6761\u6D88\u606F\u6CA1\u80FD\u9001\u8FDB\u7EC8\u7AEF\uFF1A{why}",
+      maybeNotDelivered: "\u53EF\u80FD\u6CA1\u9001\u5230",
+      wakeFailed: "\u6D88\u606F\u5DF2\u8FDB agent \u7684\u961F\u5217\uFF0C\u4F46\u5524\u9192\u5B83\u5931\u8D25\uFF08{why}\uFF09\uFF1B\u5B83\u5FD9\u7740\u7684\u65F6\u5019\u53EF\u80FD\u8BFB\u4E0D\u5230\u8FD9\u6761\uFF0C\u8BF7\u518D\u53D1\u4E00\u6B21\u3002",
+      interruptFailed: "\u6253\u65AD\u6CA1\u53D1\u51FA\u53BB\uFF08{why}\uFF09\u3002\u6D88\u606F\u8FD8\u5728 agent \u7684\u961F\u5217\u91CC\uFF0C\u5B83\u8DD1\u5B8C\u624B\u5934\u7684\u547D\u4EE4\u5C31\u4F1A\u8BFB\u5230\u3002",
       receiptNoPane: "\u8FD9\u4E2A\u9879\u76EE\u8FD8\u6CA1\u6709\u8BB0\u5F55\u5230 herdr \u7A97\u683C\uFF0C\u6D88\u606F\u6CA1\u5904\u53EF\u9001\u3002",
       promptAgentBlocked: "\u7EC8\u7AEF\u91CC\u7684 agent \u6B63\u5361\u5728\u4E00\u4E2A\u9700\u8981\u4F60\u672C\u4EBA\u786E\u8BA4\u7684\u63D0\u793A\u4E0A\uFF0C\u6536\u4E0D\u4E86\u65B0\u8F93\u5165\u3002\u56DE\u7535\u8111\u524D\u5904\u7406\u4E00\u4E0B\u3002",
       promptPaneGone: "\u8BB0\u5F55\u7684 herdr \u7A97\u683C\u5DF2\u7ECF\u4E0D\u5728\u4E86\u3002\u5230\u9879\u76EE\u91CC\u8DD1\u4E00\u6B21 agent-lark away on \u6216\u4EFB\u610F agent-lark \u547D\u4EE4\uFF0C\u91CD\u65B0\u8BB0\u5F55\u7A97\u683C\u3002",
@@ -136331,7 +136334,7 @@ var init_texts = __esm({
       setupNext: "\u4E0B\u4E00\u6B65\uFF1A\u56DE\u5230 agent \u4F1A\u8BDD\uFF0C\u8BF4\u300C\u5F00\u542F\u8FDC\u7A0B\u4EA4\u4E92\u6A21\u5F0F\u300D\u6216\u8F93\u5165 /agent-lark on\u2014\u2014daemon \u4E0E\u7FA4\u7ED1\u5B9A\u7531 agent \u4ECE\u5B83\u81EA\u5DF1\u7684\u7A97\u683C\u5B8C\u6210\uFF0C\u4E0D\u7528\u4F60\u624B\u52A8\u8DD1\u3002",
       setupReuseGaveUp: "\u8FDE\u7EED {n} \u6B21\u6CA1\u901A\u8FC7\uFF0C\u5148\u5230\u5F00\u53D1\u8005\u540E\u53F0\u6838\u5BF9 App ID / App Secret\uFF0C\u518D\u8DD1\u4E00\u6B21 agent-lark setup --reuse\u3002",
       setupManualScopes: "\u8FD9\u4E2A\u5E94\u7528\u8981\u5728\u5F00\u53D1\u8005\u540E\u53F0\u624B\u52A8\u5F00\u901A\uFF08\u5E94\u7528 \u2192 \u6743\u9650\u7BA1\u7406 \u2192 \u5F00\u901A\u6743\u9650\uFF09\uFF1A",
-      setupManualEvents: "\u4E8B\u4EF6\u8BA2\u9605\uFF1Aim.message.receive_v1\uFF08\u8BA2\u9605\u65B9\u5F0F\u9009\u300C\u4F7F\u7528\u957F\u8FDE\u63A5\u63A5\u6536\u4E8B\u4EF6\u300D\uFF09\xB7 \u56DE\u8C03\uFF1Acard.action.trigger\uFF08\u540C\u6837\u9009\u957F\u8FDE\u63A5\uFF09",
+      setupManualEvents: "\u4E8B\u4EF6\u8BA2\u9605\uFF1Aim.message.receive_v1\u3001im.message.reaction.created_v1\uFF08\u8BA2\u9605\u65B9\u5F0F\u9009\u300C\u4F7F\u7528\u957F\u8FDE\u63A5\u63A5\u6536\u4E8B\u4EF6\u300D\uFF09\xB7 \u56DE\u8C03\uFF1Acard.action.trigger\uFF08\u540C\u6837\u9009\u957F\u8FDE\u63A5\uFF09",
       setupManualPublish: "\u5F00\u901A\u540E\u53D1\u5E03\u4E00\u4E2A\u7248\u672C\uFF0C\u6743\u9650\u624D\u751F\u6548\u3002",
       closePanePrompt: "\u5173\u6389\u8FD9\u4E2A\u7A97\u683C\uFF1F[Y/n] ",
       paneKept: "\u7A97\u683C\u7559\u7740\u3002",
@@ -136339,7 +136342,7 @@ var init_texts = __esm({
       setupRequesting: "\u6B63\u5728\u5411\u98DE\u4E66\u7533\u8BF7\u626B\u7801\u6CE8\u518C\u2026\u2026",
       setupScan: "\u7528\u98DE\u4E66\u626B\u4E0A\u9762\u7684\u4E8C\u7EF4\u7801\uFF08\u626B\u4E0D\u5230\u5C31\u6253\u5F00\u8FD9\u4E2A\u94FE\u63A5\uFF09\uFF1A",
       setupScopes: "\u786E\u8BA4\u9875\u4F1A\u5217\u51FA\u8981\u6388\u6743\u7684\u6743\u9650\uFF1A",
-      setupEvents: "\u4E8B\u4EF6 im.message.receive_v1 \xB7 \u56DE\u8C03 card.action.trigger",
+      setupEvents: "\u4E8B\u4EF6 im.message.receive_v1 \xB7 im.message.reaction.created_v1 \xB7 \u56DE\u8C03 card.action.trigger",
       setupExpiry: "\u23F3 \u4E8C\u7EF4\u7801 {minutes} \u5206\u949F\u5185\u6709\u6548\uFF08{time} \u8FC7\u671F\uFF09\uFF0C\u8FC7\u671F\u5C31\u91CD\u8DD1 setup\u3002",
       setupWaiting: "  \u8FD8\u5728\u7B49\u4F60\u626B\u2026\u2026\u5269 {seconds} \u79D2",
       setupStatus: "  \u72B6\u6001\uFF1A{status}",
@@ -136372,6 +136375,9 @@ var init_texts = __esm({
       confirmText: '"{label}" is irreversible or high-cost. Go ahead?',
       notDelivered: "Not delivered",
       notDeliveredBody: "That message never reached the terminal: {why}",
+      maybeNotDelivered: "Maybe not delivered",
+      wakeFailed: "The message is in the agent's queue, but waking it failed ({why}); while it is busy it may not read this one. Please send it again.",
+      interruptFailed: "The interrupt could not be sent ({why}). The message is still in the agent's queue; it will be read once the current command finishes.",
       receiptNoPane: "No herdr pane is recorded for this project, so there is nowhere to deliver the message.",
       promptAgentBlocked: "The agent in the terminal is stuck on a prompt only you can answer and cannot take new input. Deal with it when you are back at the computer.",
       promptPaneGone: "The recorded herdr pane is gone. Run agent-lark away on (or any agent-lark command) inside the project to record the pane again.",
@@ -136398,7 +136404,7 @@ var init_texts = __esm({
       setupNext: 'Next: back in your agent session, say "turn remote mode on" or type /agent-lark on \u2014 the agent starts the daemon and binds the group from its own pane; nothing to run by hand.',
       setupReuseGaveUp: "{n} attempts failed; check the App ID / App Secret in the developer console, then run agent-lark setup --reuse again.",
       setupManualScopes: "Enable these scopes for the app by hand in the developer console (app \u2192 Permissions & Scopes):",
-      setupManualEvents: "Event subscription: im.message.receive_v1 (delivery: long connection) \xB7 callback: card.action.trigger (long connection as well)",
+      setupManualEvents: "Event subscription: im.message.receive_v1, im.message.reaction.created_v1 (delivery: long connection) \xB7 callback: card.action.trigger (long connection as well)",
       setupManualPublish: "Publish a version afterwards; scopes take effect only then.",
       closePanePrompt: "Close this pane? [Y/n] ",
       paneKept: "Pane kept.",
@@ -136406,7 +136412,7 @@ var init_texts = __esm({
       setupRequesting: "Asking Feishu for a QR-code registration\u2026",
       setupScan: "Scan the QR code above with Feishu (or open this link):",
       setupScopes: "The confirmation page lists the scopes being requested:",
-      setupEvents: "event im.message.receive_v1 \xB7 callback card.action.trigger",
+      setupEvents: "events im.message.receive_v1 \xB7 im.message.reaction.created_v1 \xB7 callback card.action.trigger",
       setupExpiry: "\u23F3 The QR code is valid for {minutes} minutes (expires {time}); rerun setup if it expires.",
       setupWaiting: "  still waiting for the scan\u2026 {seconds} s left",
       setupStatus: "  status: {status}",
@@ -136852,18 +136858,22 @@ async function agentList() {
     return [];
   }
 }
-async function promptPane(paneId, text) {
-  try {
-    const { stdout } = await execFileAsync("herdr", ["agent", "prompt", paneId, text], {
-      timeout: 2e4,
-      maxBuffer: 1024 * 1024
-    });
-    const env = parse(stdout);
+function outcomeOf(r) {
+  for (const stream of [r.stdout, r.stderr ?? ""]) {
+    if (!stream.trim()) continue;
+    const env = parse(stream);
+    if (env.error?.code === "bad_output") continue;
     if (env.error) return { ok: false, code: env.error.code, message: env.error.message };
     return { ok: true };
-  } catch (err) {
-    return { ok: false, code: "spawn_failed", message: err instanceof Error ? err.message : String(err) };
   }
+  if (r.ok) return { ok: false, code: "bad_output", message: (r.stdout.trim() || r.stderr || "").slice(0, 200) };
+  return { ok: false, code: "spawn_failed", message: r.error ?? "herdr failed" };
+}
+async function promptPane(paneId, text, run = (args) => runHerdr(args, 2e4)) {
+  return outcomeOf(await run(["agent", "prompt", paneId, text]));
+}
+async function sendKeys(paneId, key, run = runHerdr) {
+  return outcomeOf(await run(["agent", "send-keys", paneId, key]));
 }
 function findPaneForProject(agents, root) {
   const inProject = agents.filter((a) => a.cwd === root || a.foreground_cwd === root);
@@ -136916,13 +136926,13 @@ var init_herdr = __esm({
   "skills/agent-lark/src/herdr.ts"() {
     "use strict";
     execFileAsync = promisify(execFile);
-    runHerdr = async (args) => {
+    runHerdr = async (args, timeoutMs = 1e4) => {
       try {
-        const { stdout } = await execFileAsync("herdr", args, { timeout: 1e4, maxBuffer: 1024 * 1024 });
-        return { ok: true, stdout };
+        const { stdout, stderr } = await execFileAsync("herdr", args, { timeout: timeoutMs, maxBuffer: 1024 * 1024 });
+        return { ok: true, stdout, stderr };
       } catch (err) {
         const e = err;
-        return { ok: false, stdout: e.stdout ?? "", error: e.message ?? String(err) };
+        return { ok: false, stdout: e.stdout ?? "", stderr: e.stderr ?? "", error: e.message ?? String(err) };
       }
     };
   }
@@ -137591,10 +137601,10 @@ ${optionLines(p.options, recommended, lang)}`),
 function notifyCard(p, projectLabel2) {
   return card({ icon: "\u{1F4E3}", title: `[${projectLabel2}] ${p.title}`, template: "wathet" }, [md(p.body)]);
 }
-function receiptCard(projectLabel2, why, lang = "en") {
+function receiptCard(projectLabel2, why, lang = "en", uncertain = false) {
   const T = t(lang);
-  return card({ icon: "\u26A0\uFE0F", title: `[${projectLabel2}] ${T.notDelivered}`, template: "orange" }, [
-    md(fill(T.notDeliveredBody, { why }))
+  return card({ icon: "\u26A0\uFE0F", title: `[${projectLabel2}] ${uncertain ? T.maybeNotDelivered : T.notDelivered}`, template: "orange" }, [
+    md(uncertain ? why : fill(T.notDeliveredBody, { why }))
   ]);
 }
 function statusCard(projectLabel2, detail, lang = "en") {
@@ -137630,10 +137640,10 @@ __export(daemon_exports, {
   DaemonStartError: () => DaemonStartError,
   runDaemon: () => runDaemon
 });
-import { appendFileSync, lstatSync, mkdirSync as mkdirSync3, readdirSync, readFileSync as readFileSync4, realpathSync, rmdirSync, statSync as statSync2, writeFileSync as writeFileSync4, unlinkSync as unlinkSync3, existsSync as existsSync3 } from "node:fs";
+import { appendFileSync, closeSync, lstatSync, mkdirSync as mkdirSync3, openSync, readdirSync, readFileSync as readFileSync4, readSync, realpathSync, rmdirSync, statSync as statSync2, writeFileSync as writeFileSync4, unlinkSync as unlinkSync3, existsSync as existsSync3 } from "node:fs";
 import { createHash as createHash3, randomUUID as randomUUID2 } from "node:crypto";
 import { basename as basename2, join as join3, sep } from "node:path";
-import { platform as platform4, tmpdir } from "node:os";
+import { homedir as homedir3, platform as platform4, tmpdir } from "node:os";
 function mediaTtlDays() {
   const raw = process.env.AGENT_LARK_MEDIA_TTL_DAYS?.trim();
   if (raw === void 0 || raw === "") return { days: MEDIA_TTL_DAYS };
@@ -137754,7 +137764,7 @@ async function runDaemon(deps = {}) {
   if (!creds) throw new DaemonStartError(4, msg.daemonNoCreds);
   ensureHomeDir();
   if (await isDaemonListening(2e3)) throw new DaemonStartError(3, msg.daemonAlready);
-  const herdr = deps.herdr ?? { agentList, promptPane, findPaneForProject };
+  const herdr = deps.herdr ?? { agentList, promptPane, sendKeys, findPaneForProject };
   const retryMs = deps.connectRetryMs ?? CONNECT_RETRY_MS;
   const ttl = mediaTtlDays();
   if (ttl.invalid !== void 0) {
@@ -137840,10 +137850,10 @@ async function runDaemon(deps = {}) {
     }
   };
   const langOf = (b) => b?.lang ?? "en";
-  const receipt = async (b, why) => {
+  const receipt = async (b, why, uncertain = false) => {
     try {
-      const sent = await channel.send(b.chatId, { card: receiptCard(b.label, why, langOf(b)) });
-      rememberCard(sent.messageId, "receipt", t(langOf(b)).notDelivered);
+      const sent = await channel.send(b.chatId, { card: receiptCard(b.label, why, langOf(b), uncertain) });
+      rememberCard(sent.messageId, "receipt", uncertain ? t(langOf(b)).maybeNotDelivered : t(langOf(b)).notDelivered);
     } catch (err) {
       log("receipt.failed", { root: b.root, err: String(err) });
     }
@@ -137862,21 +137872,138 @@ async function runDaemon(deps = {}) {
         return fill(T.promptRefused, { code: code ?? "?", message: message ?? "" }).trim();
     }
   };
+  const queued = /* @__PURE__ */ new Map();
+  const claudeDir = deps.claudeConfigDir ?? process.env.CLAUDE_CONFIG_DIR ?? join3(homedir3(), ".claude");
+  const queuedMaxAgeMs = deps.queuedMaxAgeMs ?? QUEUED_MAX_AGE_MS;
+  const transcriptMissingLogged = /* @__PURE__ */ new Set();
+  const transcriptFor = (sessionId) => {
+    if (!/^[A-Za-z0-9-]+$/.test(sessionId)) {
+      if (!transcriptMissingLogged.has(sessionId)) {
+        transcriptMissingLogged.add(sessionId);
+        log("transcript.invalid-session", { length: sessionId.length });
+      }
+      return null;
+    }
+    try {
+      for (const dir of readdirSync(join3(claudeDir, "projects"))) {
+        const path2 = join3(claudeDir, "projects", dir, `${sessionId}.jsonl`);
+        if (existsSync3(path2)) return path2;
+      }
+    } catch {
+    }
+    if (!transcriptMissingLogged.has(sessionId)) {
+      transcriptMissingLogged.add(sessionId);
+      log("transcript.missing", { session: sessionId });
+    }
+    return null;
+  };
+  const transcriptToWatch = (agent) => {
+    const sessionId = agent?.agent === "claude" && agent.agent_status === "working" ? agent.agent_session?.value : void 0;
+    if (!sessionId) return void 0;
+    const path2 = transcriptFor(sessionId);
+    if (!path2) return void 0;
+    try {
+      return { path: path2, offset: statSync2(path2).size };
+    } catch {
+      return void 0;
+    }
+  };
+  const readAppended = (path2, offset) => {
+    const size = statSync2(path2).size;
+    if (size <= offset) return { lines: [], end: offset };
+    const fd = openSync(path2, "r");
+    try {
+      const buf = Buffer.alloc(Math.min(size - offset, TRANSCRIPT_READ_MAX));
+      const n = readSync(fd, buf, 0, buf.length, offset);
+      const cut = buf.subarray(0, n).lastIndexOf(10);
+      if (cut < 0) return { lines: [], end: n === TRANSCRIPT_READ_MAX ? offset + n : offset };
+      return { lines: buf.subarray(0, cut).toString("utf8").split("\n"), end: offset + cut + 1 };
+    } finally {
+      closeSync(fd);
+    }
+  };
+  const swapForGet = async (msgKey, q) => {
+    try {
+      const res = await channel.rawClient.im.v1.messageReaction.delete({ path: { message_id: msgKey, reaction_id: q.reactionId } });
+      const refused = feishuError(res);
+      if (refused) log("queued.unmark-refused", { root: q.b.root, msgKey, code: refused.code });
+    } catch (err) {
+      log("queued.unmark-failed", { root: q.b.root, msgKey, err: String(err).slice(0, 200) });
+    }
+    try {
+      await channel.addReaction(msgKey, "Get");
+    } catch (err) {
+      log("reaction.failed", { messageId: msgKey, err: String(err).slice(0, 200) });
+    }
+  };
+  const closeQueued = async (msgKey, q, why) => {
+    if (!queued.delete(msgKey)) return;
+    if (why === "expired") {
+      log("queued.expired", { root: q.b.root, paneId: q.paneId, msgKey });
+      return;
+    }
+    log("queued.read", { root: q.b.root, paneId: q.paneId, msgKey, why });
+    await swapForGet(msgKey, q);
+  };
+  const settleQueued = async (live) => {
+    for (const [msgKey, q] of [...queued]) {
+      if (Date.now() - q.since >= queuedMaxAgeMs) {
+        await closeQueued(msgKey, q, "expired");
+        continue;
+      }
+      const a = live.find((x) => x.pane_id === q.paneId);
+      if (a && a.agent_status !== "working" && a.agent_status !== "blocked" && a.agent_status !== "unknown") {
+        await closeQueued(msgKey, q, "idle");
+        continue;
+      }
+      if (!q.transcript) continue;
+      let appended;
+      try {
+        appended = readAppended(q.transcript.path, q.transcript.offset);
+      } catch (err) {
+        log("transcript.read-failed", { path: q.transcript.path, err: String(err).slice(0, 200) });
+        continue;
+      }
+      q.transcript.offset = appended.end;
+      for (const line of appended.lines) {
+        let rec;
+        try {
+          rec = JSON.parse(line);
+        } catch {
+          continue;
+        }
+        if (rec.type !== "queue-operation") continue;
+        if (rec.operation === "dequeue") {
+          await closeQueued(msgKey, q, "dequeued");
+          break;
+        }
+        if (rec.operation === "remove" && rec.reason === "absorbed_mid_turn" && rec.content === q.text) {
+          await closeQueued(msgKey, q, "absorbed");
+          break;
+        }
+      }
+    }
+  };
   const inject = async (b, text, reactTo) => {
     try {
+      const live = await herdr.agentList();
       let paneId = b.paneId;
-      if (!paneId) paneId = herdr.findPaneForProject(await herdr.agentList(), b.root);
+      if (!paneId) paneId = herdr.findPaneForProject(live, b.root);
       if (!paneId) {
         await receipt(b, t(langOf(b)).receiptNoPane);
         return;
       }
-      const outcome = await herdr.promptPane(paneId, `${INJECT_PREFIX}${text}`);
+      const line = `${INJECT_PREFIX}${text}`;
+      const agent = live.find((a) => a.pane_id === paneId);
+      const transcript = transcriptToWatch(agent);
+      const outcome = await herdr.promptPane(paneId, line);
       log("inject", { root: b.root, paneId, ok: outcome.ok, code: outcome.code });
       if (!outcome.ok) {
         await receipt(b, explainPromptFailure(outcome.code, outcome.message, langOf(b)));
         return;
       }
-      if (!reactTo) return;
+      const marked = await afterPrompt(b, paneId, agent, line, reactTo, transcript);
+      if (!reactTo || marked) return;
       try {
         await channel.addReaction(reactTo, "Get");
       } catch (err) {
@@ -137885,6 +138012,39 @@ async function runDaemon(deps = {}) {
     } catch (err) {
       log("inject.failed", { root: b.root, err: String(err).slice(0, 200) });
     }
+  };
+  const afterPrompt = async (b, paneId, agent, line, reactTo, transcript) => {
+    if (agent?.agent === "kimi") {
+      const woken = await herdr.sendKeys(paneId, "ctrl+s");
+      log("inject.wake", { root: b.root, paneId, ok: woken.ok, code: woken.code });
+      if (!woken.ok) await receipt(b, fill(t(langOf(b)).wakeFailed, { why: [woken.code, woken.message].filter(Boolean).join(" ") || "?" }), true);
+      return false;
+    }
+    if (agent?.agent !== "claude" || agent.agent_status !== "working" || !reactTo) return false;
+    try {
+      const reactionId = await channel.addReaction(reactTo, QUEUE_EMOJI);
+      queued.set(reactTo, { b, paneId, sessionId: agent.agent_session?.value, text: line, since: Date.now(), reactionId, transcript });
+      while (queued.size > QUEUED_KEEP) {
+        const oldest = queued.keys().next().value;
+        queued.delete(oldest);
+        log("queued.evicted", { root: b.root, msgKey: oldest });
+      }
+      log("queued.marked", { root: b.root, paneId, msgKey: reactTo, transcript: !!transcript });
+      return true;
+    } catch (err) {
+      log("queued.mark-failed", { root: b.root, msgKey: reactTo, err: String(err).slice(0, 200) });
+      return false;
+    }
+  };
+  const sendNow = async (msgKey, q) => {
+    const r = await herdr.sendKeys(q.paneId, "ctrl+enter");
+    log("queued.interrupt", { root: q.b.root, paneId: q.paneId, msgKey, ok: r.ok, code: r.code });
+    if (r.ok) {
+      await swapForGet(msgKey, q);
+      return;
+    }
+    queued.set(msgKey, q);
+    await receipt(q.b, fill(t(langOf(q.b)).interruptFailed, { why: [r.code, r.message].filter(Boolean).join(" ") || "?" }), true);
   };
   const transcribe = async (audioPath) => {
     try {
@@ -137976,6 +138136,14 @@ ${msg.injectFilesOnly}`;
     if (quoted) text = `${fill(msg.replyTo, { title: quoted.title })}
 ${text}`;
     await inject(b, text, incoming.messageId);
+  }));
+  channel.on("reaction", guarded("reaction", async (evt) => {
+    if (evt.action !== "added" || evt.emojiType === QUEUE_EMOJI) return;
+    const q = queued.get(evt.messageId);
+    if (!q) return;
+    queued.delete(evt.messageId);
+    log("reaction.received", { messageId: evt.messageId, emoji: evt.emojiType, operator: evt.operator.openId });
+    await sendNow(evt.messageId, q);
   }));
   channel.on("cardAction", guarded("card-action", async (evt) => {
     const value = evt.action.value ?? {};
@@ -138184,8 +138352,9 @@ ${msg.renamePermissionHint}` : text;
   const agents = herdr.agentList;
   const poll = async () => {
     const away = bindings.activeAll().filter((b) => b.away && b.paneId);
-    if (!away.length) return;
+    if (!away.length && !queued.size) return;
     const live = await agents();
+    if (queued.size) await settleQueued(live);
     for (const b of away) {
       if (pendingFor(b.root)) continue;
       const a = live.find((x) => x.pane_id === b.paneId);
@@ -138690,7 +138859,7 @@ ${msg.renamePermissionHint}` : text;
   void connectLoop().catch((err) => log("connect-loop.failed", { err: String(err).slice(0, 200) }));
   return { stop: () => stop("stop()"), done };
 }
-var INJECT_PREFIX, POLL_MS, STATUS_COOLDOWN_MS, CONNECT_RETRY_MS, CONNECT_RETRY_MAX_MS, CLOSE_GRACE_MS, CANCEL_CARD_MS, MEDIA_TTL_DAYS, SWEEP_MS, CHAT_LIST_MAX_PAGES, MARKER_CLEARED, DAY_MS, DaemonStartError, MAX_IMAGE_BYTES, MAX_FILE_BYTES, CLOSED_KEEP, SENT_CARDS_KEEP;
+var INJECT_PREFIX, POLL_MS, STATUS_COOLDOWN_MS, CONNECT_RETRY_MS, CONNECT_RETRY_MAX_MS, CLOSE_GRACE_MS, CANCEL_CARD_MS, MEDIA_TTL_DAYS, SWEEP_MS, CHAT_LIST_MAX_PAGES, MARKER_CLEARED, DAY_MS, DaemonStartError, MAX_IMAGE_BYTES, MAX_FILE_BYTES, CLOSED_KEEP, SENT_CARDS_KEEP, QUEUED_KEEP, QUEUED_MAX_AGE_MS, QUEUE_EMOJI, TRANSCRIPT_READ_MAX;
 var init_daemon = __esm({
   "skills/agent-lark/src/daemon.ts"() {
     "use strict";
@@ -138726,6 +138895,10 @@ var init_daemon = __esm({
     MAX_FILE_BYTES = 30 * 1024 * 1024;
     CLOSED_KEEP = 50;
     SENT_CARDS_KEEP = 200;
+    QUEUED_KEEP = 20;
+    QUEUED_MAX_AGE_MS = 30 * 6e4;
+    QUEUE_EMOJI = "StatusInFlight";
+    TRANSCRIPT_READ_MAX = 4 * 1024 * 1024;
   }
 });
 
@@ -138735,7 +138908,7 @@ var import_qrcode = __toESM(require_lib3(), 1);
 init_creds();
 init_herdr();
 import { spawn } from "node:child_process";
-import { existsSync as existsSync4, openSync, realpathSync as realpathSync2, unlinkSync as unlinkSync4 } from "node:fs";
+import { existsSync as existsSync4, openSync as openSync2, realpathSync as realpathSync2, unlinkSync as unlinkSync4 } from "node:fs";
 import { resolve as resolve2 } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -138833,7 +139006,9 @@ var DEFAULT_SCOPES = [
   // `ask --urgent` flags the owner in-app; without this the flag is refused and only noted.
   "im:message.urgent",
   // Voice messages arrive as an opaque `<audio/>` placeholder without this.
-  "speech_to_text:speech"
+  "speech_to_text:speech",
+  // The reaction event (a human marking their own queued message) is not delivered without this.
+  "im:message.reactions:read"
 ];
 function describeError(err) {
   if (err instanceof Error) return err.message || err.name;
@@ -139112,7 +139287,7 @@ async function runQr(deps, store, say, fail, updateAppId, scopes) {
     },
     addons: {
       scopes: { tenant: scopes },
-      events: { items: { tenant: ["im.message.receive_v1"] } },
+      events: { items: { tenant: ["im.message.receive_v1", "im.message.reaction.created_v1"] } },
       callbacks: { items: ["card.action.trigger"] }
     },
     onQRCodeReady: ({ url, expireIn }) => {
@@ -139203,7 +139378,7 @@ async function startDaemonDetached() {
   if (problem) return { ok: false, code: 4, message: problem };
   if (await daemonAlive()) return { ok: true, message: msg.daemonAlready };
   ensureHomeDir();
-  const out = openSync(logPath(), "a");
+  const out = openSync2(logPath(), "a");
   const self2 = fileURLToPath(import.meta.url);
   const child = spawn(process.execPath, [self2, "daemon"], { detached: true, stdio: ["ignore", out, out] });
   child.unref();

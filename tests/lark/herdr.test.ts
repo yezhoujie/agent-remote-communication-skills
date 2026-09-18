@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { closePane, quoteForPaneShell, runInPane, splitPane, type HerdrRun, type HerdrRunner } from '../../skills/agent-lark/src/herdr.js';
+import { closePane, promptPane, quoteForPaneShell, runInPane, sendKeys, splitPane, type HerdrRun, type HerdrRunner } from '../../skills/agent-lark/src/herdr.js';
 
 function recorder(answer: (args: string[]) => HerdrRun): { run: HerdrRunner; calls: string[][] } {
   const calls: string[][] = [];
@@ -43,4 +43,51 @@ test('runInPane types one quoted command line into the pane; closePane closes it
   assert.deepEqual(rec.calls[0], ['pane', 'run', 'w1:p7', quoteForPaneShell(['/usr/bin/node', '/skill/cli.mjs', '--home', '/tmp/h', 'setup', '--reuse'])]);
   assert.equal((await closePane('w1:p7', rec.run)).ok, true);
   assert.deepEqual(rec.calls[1], ['pane', 'close', 'w1:p7']);
+});
+
+// ---- the agent side: prompt / send-keys against a scripted `herdr`, and how a refusal is read ----
+
+const refusal = JSON.stringify({ error: { code: 'agent_not_found', message: 'agent target w1:p9 not found' }, id: 'cli:agent:prompt' });
+
+test('promptPane: a refusal herdr prints on stderr with exit 1 comes back as its own error code, not as spawn_failed', async () => {
+  // herdr 0.9.1: the error envelope goes to stderr and the process exits 1.
+  const rec = recorder(() => ({ ok: false, stdout: '', stderr: refusal, error: 'Command failed: herdr agent prompt w1:p9 hi' }));
+  const out = await promptPane('w1:p9', 'hi', rec.run);
+  assert.deepEqual(rec.calls, [['agent', 'prompt', 'w1:p9', 'hi']]);
+  assert.equal(out.ok, false);
+  assert.equal(out.code, 'agent_not_found');
+  assert.match(out.message ?? '', /not found/);
+});
+
+test('promptPane: an envelope on stdout is read the same way; a plain result is ok; a herdr that cannot be spawned is spawn_failed', async () => {
+  const onStdout = recorder(() => ({ ok: true, stdout: refusal }));
+  assert.equal((await promptPane('w1:p9', 'hi', onStdout.run)).code, 'agent_not_found');
+  const fine = recorder(() => ({ ok: true, stdout: JSON.stringify({ id: 'cli:agent:prompt', result: { type: 'agent_prompted' } }) }));
+  assert.deepEqual(await promptPane('w1:p1', 'hi', fine.run), { ok: true });
+  const missing = recorder(() => ({ ok: false, stdout: '', stderr: '', error: 'spawn herdr ENOENT' }));
+  const out = await promptPane('w1:p1', 'hi', missing.run);
+  assert.equal(out.code, 'spawn_failed');
+  assert.match(out.message ?? '', /ENOENT/);
+});
+
+test('sendKeys sends one logical key to the agent and reads the answer like promptPane', async () => {
+  const ok = recorder(() => ({ ok: true, stdout: JSON.stringify({ id: 'cli:agent:send-keys', result: { type: 'ok' } }) }));
+  assert.deepEqual(await sendKeys('w1:p1', 'ctrl+enter', ok.run), { ok: true });
+  assert.deepEqual(ok.calls, [['agent', 'send-keys', 'w1:p1', 'ctrl+enter']]);
+  const gone = recorder(() => ({ ok: false, stdout: '', stderr: refusal, error: 'Command failed' }));
+  assert.equal((await sendKeys('w1:p1', 'ctrl+s', gone.run)).code, 'agent_not_found');
+});
+
+test('promptPane: a zero exit with no envelope on either stream is bad_output, not ok', async () => {
+  const noise = recorder(() => ({ ok: true, stdout: 'not json at all', stderr: '' }));
+  const out = await promptPane('w1:p1', 'hi', noise.run);
+  assert.equal(out.ok, false);
+  assert.equal(out.code, 'bad_output');
+});
+
+test('promptPane: bad_output on a zero exit names what was on stderr when stdout is empty', async () => {
+  const noisy = recorder(() => ({ ok: true, stdout: '', stderr: 'warning: something odd' }));
+  const out = await promptPane('w1:p1', 'hi', noisy.run);
+  assert.equal(out.code, 'bad_output');
+  assert.match(out.message ?? '', /something odd/);
 });

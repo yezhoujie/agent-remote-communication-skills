@@ -191,11 +191,15 @@ export function notifyCard(p: NotifyPayload, projectLabel: string): object {
   return card({ icon: '📣', title: `[${projectLabel}] ${p.title}`, template: 'wathet' }, [md(p.body)]);
 }
 
-/** Sent into the group when a phone message could not reach the terminal. */
-export function receiptCard(projectLabel: string, why: string, lang: Lang = 'en'): object {
+/**
+ * Sent into the group when a phone message could not reach the terminal —
+ * or, with `uncertain`, when it did reach the agent's queue but the wake-up
+ * key was refused, so whether it gets read is not known.
+ */
+export function receiptCard(projectLabel: string, why: string, lang: Lang = 'en', uncertain = false): object {
   const T = t(lang);
-  return card({ icon: '⚠️', title: `[${projectLabel}] ${T.notDelivered}`, template: 'orange' }, [
-    md(fill(T.notDeliveredBody, { why })),
+  return card({ icon: '⚠️', title: `[${projectLabel}] ${uncertain ? T.maybeNotDelivered : T.notDelivered}`, template: 'orange' }, [
+    md(uncertain ? why : fill(T.notDeliveredBody, { why })),
   ]);
 }
 
