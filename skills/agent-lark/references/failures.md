@@ -310,6 +310,14 @@ Lines starting `note: ` on stderr while a command blocks are informational; the 
 `away on` stops at the first failure and leaves the switch off: a failed step never leaves remote mode
 half-on.
 
+**The QR-code `setup` run by an agent.** Hand the URL line over the moment it prints. A link the human
+reports as expired or refused (one way there: opened once under the wrong Feishu account) is not coming
+back: kill the setup still waiting for the scan, rerun, send the new line at once. When the human is on
+the phone, `send-file` the code as a PNG and `notify` the URL line — copy the PNG into
+`~/.agent-lark/media/` first, since `send-file` only serves files under the project, that directory or
+the system temp directory. `setup --update` (re-authorizing the same app, e.g. for a scope added later)
+runs the same way and re-submits the current scope / event lists.
+
 **The line a handed-off `setup --reuse` sends back.** The pane runs `setup --reuse --report-to <your pane> --close-pane`;
 when it ends, exactly one of these is injected into your session (via `herdr agent prompt`, so it arrives
 like any other prompt; the secret is masked as `***` wherever it could appear):

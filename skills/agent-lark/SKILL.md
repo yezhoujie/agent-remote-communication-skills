@@ -40,7 +40,9 @@ same words in a sentence). Each maps to one flow:
   - QR code ⇒ run `agent-lark setup </dev/null` yourself (stdin closed explicitly: the menu only appears
     on a terminal, so this goes straight to the QR code whatever your harness gives a child process). It draws the code as ANSI art and prints the URL as a plain line right under it;
     hand over that line, or render it into a PNG yourself and open it. Run it in the background: it waits
-    for the scan (the code expires after a few minutes; rc 4 then, rerun).
+    for the scan (the code expires after 60 minutes; rc 4 then, rerun). An expired or refused link ⇒ kill
+    the waiting setup, rerun, hand the new line over at once (`references/failures.md` §8 for the phone
+    hand-over and `setup --update`).
   - Reuse ⇒ run `agent-lark setup --reuse`. **The secret never passes through you.** Inside herdr the
     command opens a pane below yours, runs the interactive setup there (App ID typed, App Secret typed
     with echo off) and exits 0 at once with `The interactive setup is running in herdr pane <id>: …`;
