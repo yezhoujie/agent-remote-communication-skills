@@ -1,8 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "rootDir": ".",
-    "outDir": ".test-out"
-  },
-  "include": ["skills/agent-lark/src/**/*.ts", "tests/lark/**/*.ts"]
-}
