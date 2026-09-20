@@ -9,7 +9,11 @@
   "plugins": [
     {
       "name": "agent-ntfy",
-      "source": "./skills/agent-ntfy",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/yezhoujie/ntfy-connector.git",
+        "path": "skill/agent-ntfy"
+      },
       "description": "Pushes a decision that needs a human to their phone via ntfy.sh and blocks until the verdict comes back on stdout; messages the human sends from the phone arrive in the agent session as instructions.",
       "author": {
         "name": "yezhoujie"
@@ -17,14 +21,18 @@
       "category": "development",
       "keywords": ["ntfy", "notification", "human-in-the-loop", "remote"],
       "license": "MIT",
-      "repository": "https://github.com/yezhoujie/agent-remote-communication-skills",
-      "homepage": "https://github.com/yezhoujie/agent-remote-communication-skills/tree/main/skills/agent-ntfy",
+      "repository": "https://github.com/yezhoujie/ntfy-connector",
+      "homepage": "https://github.com/yezhoujie/ntfy-connector/tree/main/skill/agent-ntfy",
       "strict": false,
       "skills": ["./"]
     },
     {
       "name": "agent-lark",
-      "source": "./skills/agent-lark",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/yezhoujie/lark-connector.git",
+        "path": "skill/agent-lark"
+      },
       "description": "Pushes a decision that needs a human to their phone as a Feishu/Lark card and blocks until the verdict comes back on stdout; messages, images, files and voice notes sent in the group arrive in the agent session as instructions.",
       "author": {
         "name": "yezhoujie"
@@ -32,8 +40,8 @@
       "category": "development",
       "keywords": ["feishu", "lark", "human-in-the-loop", "remote"],
       "license": "MIT",
-      "repository": "https://github.com/yezhoujie/agent-remote-communication-skills",
-      "homepage": "https://github.com/yezhoujie/agent-remote-communication-skills/tree/main/skills/agent-lark",
+      "repository": "https://github.com/yezhoujie/lark-connector",
+      "homepage": "https://github.com/yezhoujie/lark-connector/tree/main/skill/agent-lark",
       "strict": false,
       "skills": ["./"]
     }
