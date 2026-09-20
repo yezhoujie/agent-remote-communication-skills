@@ -6,9 +6,10 @@ both expose the same command shape (`ask` with the same eight-field JSON, `notif
 same exit codes 0–4). They differ in the channel, and everything below follows from that. Chinese version:
 [COMPARISON.zh-CN.md](COMPARISON.zh-CN.md).
 
-Sources, so you can check: agent-ntfy's [README](skills/agent-ntfy/README.md) (§2, §7, §8, §9) and
-[SKILL.md](skills/agent-ntfy/SKILL.md); agent-lark's [README](skills/agent-lark/README.md) (§2, §9, §10) and
-[SKILL.md](skills/agent-lark/SKILL.md).
+Sources, so you can check: ntfy-connector's [README](https://github.com/yezhoujie/ntfy-connector/blob/main/README.md)
+(§2, §7, §8, §9) and [SKILL.md](https://github.com/yezhoujie/ntfy-connector/blob/main/skill/agent-ntfy/SKILL.md);
+lark-connector's [README](https://github.com/yezhoujie/lark-connector/blob/main/README.md)
+(§2, §9, §10) and [SKILL.md](https://github.com/yezhoujie/lark-connector/blob/main/skill/agent-lark/SKILL.md).
 
 ## Pick in one minute
 
@@ -16,14 +17,14 @@ Sources, so you can check: agent-ntfy's [README](skills/agent-ntfy/README.md) (�
   a topic, tap one test notification, done.
 - You already live in Feishu / Lark, or you want photos, files and voice notes to reach the agent, more than one
   button, or a channel that is yours rather than a public server: **agent-lark**. One QR scan creates the app.
-- iPhone: agent-lark. The ntfy iOS app receives notifications but has no reply box (agent-ntfy README §2.2 has the
-  web-app workaround).
+- iPhone: agent-lark. The ntfy iOS app receives notifications but has no reply box (ntfy-connector README §2.2 has
+  the web-app workaround).
 
 ## Side by side
 
-| | agent-ntfy | agent-lark |
+| | ntfy-connector | lark-connector |
 |---|---|---|
-| **Channel** | [ntfy.sh](https://ntfy.sh), a public push service (or your own ntfy instance, `AGENT_NTFY_URL`); one random topic per project out of a pool | A Feishu / Lark custom app of your own, one Feishu group per project |
+| **Channel** | [ntfy.sh](https://ntfy.sh), a public push service (or your own ntfy instance, `NTFY_CONNECTOR_URL`); one random topic per project out of a pool | A Feishu / Lark custom app of your own, one Feishu group per project |
 | **What the phone needs** | The ntfy app; no account anywhere | Feishu / Lark, signed in with your own account — a personal account is enough, no workspace admin |
 | **Runtime on the machine** | Python ≥ 3.10, standard library only | Node.js ≥ 22, one self-contained file |
 | **First-time setup** | Subscribe the phone to the topic shown in the terminal, tap the button on a test notification (`confirm-sub`, once per topic) | `setup` on a terminal: a menu — scan a QR code with Feishu, or type the App ID and App Secret of an app you already have (never echoed); then tell the agent to turn remote mode on — it runs `away on`, which creates the project's group and invites you |
@@ -42,12 +43,12 @@ Sources, so you can check: agent-ntfy's [README](skills/agent-ntfy/README.md) (�
 | **Where content travels** | In clear through ntfy.sh | Through Feishu's servers; the group's description carries the project's absolute path |
 | **Stopping the daemon with a question pending** | Stops; the waiting `ask` exits 3 | Refused; `--force` stops and cancels |
 | **End of a task** | `release`: the slot goes back to the pool (`away off` does it too) | ask the human first: `unbind` (the group stays in Feishu and is offered back for renaming next time) or `unbind --dissolve` (dissolved and forgotten); groups gone from Feishu are forgotten by the daemon daily; `away off` only flips the switch |
-| **Language of the fixed wording** | `lang` in the JSON; otherwise `--lang` / `AGENT_NTFY_LANG` / the system locale | `lang` in the JSON (default `en`); the CLI itself is English only |
+| **Language of the fixed wording** | `lang` in the JSON; otherwise `--lang` / `NTFY_CONNECTOR_LANG` / the system locale | `lang` in the JSON (default `en`); the CLI itself is English only |
 
 ## Both installed
 
 They do not know about each other, and nothing in either decides which one a decision goes to. That is the job
 of the standing rule you give the agent: keep one remote-mode rule in force per machine or per project, and let
-it name the CLI it calls — [agent-ntfy's rule](skills/agent-ntfy/examples/remote-mode-rule.md) or
-[agent-lark's rule](skills/agent-lark/examples/remote-mode-rule.md) (each has a Chinese twin next to it). Running
-both daemons side by side is fine; they share nothing.
+it name the CLI it calls — [agent-ntfy's rule](https://github.com/yezhoujie/ntfy-connector/blob/main/skill/agent-ntfy/examples/remote-mode-rule.md)
+or [agent-lark's rule](https://github.com/yezhoujie/lark-connector/blob/main/skill/agent-lark/examples/remote-mode-rule.md)
+(each has a Chinese twin next to it). Running both daemons side by side is fine; they share nothing.
